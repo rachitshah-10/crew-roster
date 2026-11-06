@@ -65,8 +65,23 @@ cd ..
 
 ## Ticket Ownership & Handoff
 
-* **CRE-5 (Rachit Shah):** Initial project structure, locked dependencies, hosted infrastructure, and integration contracts. *(This PR)*
+* **CRE-5 (Rachit Shah):** Initial project structure, locked dependencies, hosted infrastructure, and integration contracts.
 * **CRE-6 (Shreyaa Lakshmivaragan):** Parsing, deterministic compliance engine, sample datasets, and engine tests.
 * **CRE-7 (Rachit Shah):** Backend API, persistence, rule versioning, and SQLite integration.
 * **CRE-8 (Jihyung Park):** Scheduler & manager UI workflows.
-* **CRE-9 (Jihyung Park):** Handover documentation, architecture diagrams, user flow, and meeting demo runbook *(Jihyung assumes full README ownership in CRE-9)*.
+* **CRE-9 (Jihyung Park):** Handover documentation, architecture diagrams, user flow, and meeting demo runbook.
+
+## Review documentation
+
+The existing CrewCheck materials are available in this repository:
+
+- [Project handbook PDF](docs/handbook/crewcheck-project-handbook.pdf) and [editable Word handbook](docs/handbook/crewcheck-project-handbook.docx)
+- [Architecture and guide](docs/index.html)
+- [Meeting demo runbook](docs/meeting-demo-runbook.html)
+- [Local architecture](docs/architecture.md) and [user interactions](docs/user-flow.md)
+- [PostgreSQL transition plan](docs/postgresql-plan.md)
+- [Presentation sources and assets](presentation/)
+
+These materials were transferred from the [pinned reference implementation](https://github.com/jihyungparkcoforge/crewcheck/tree/cc3850ccf3d2903052ce52098e0b3f3f4639fe9b). Their screenshots, deployment links and recorded test outcomes describe that reference, not a newly verified team deployment. Final target verification depends on CRE-6, CRE-7 and CRE-8. Existing artifact-generation scripts retain their reference environment paths and need integration review before regeneration.
+
+The [API contract](docs/api-contract.md) and [file ownership](docs/file-ownership.md) remain maintained by Rachit. The reference UI and the current contract use different field names in several places; reconcile those interfaces before an integrated demonstration.
