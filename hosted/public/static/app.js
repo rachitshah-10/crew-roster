@@ -52,14 +52,44 @@ try{
  }catch(error){if(user)shell(pagehead('Unable to open this view','Your saved data has not changed.')+errHTML(error)+`<button class="btn" data-action="reload">Try again</button>`)}
 }
 
-
+function policyCard(policy){return `<div class="card pad"><div class="actions"><h2>Rule set</h2><span class="pill blue">v${policy.version}</span></div><p class="subtitle">${esc(policy.name)}</p><div class="ruleline"><small>Maximum duty duration</small><strong>${policy.max_duty_hours} hours</strong></div><div class="ruleline"><small>Minimum rest</small><strong>${policy.min_rest_hours} hours</strong></div><div class="ruleline"><small>Certification validity</small><strong class="smallvalue">Through duty ${policy.certification_at}</strong></div><p class="note">Illustrative thresholds apply to both crew roles. These are not a complete FAA or EASA rule set.</p></div>`}
 const importFields={crew_id:'Crew ID',crew_name:'Crew name',role:'Crew role',duty_id:'Duty ID',duty_start:'Duty start',duty_end:'Duty end',certification_expires_at:'Certification expiry (optional)'};
 let pendingImport=null,importSettings={},importChoices={};
+function importSetup(){
+ if(!pendingImport||!Object.keys(importChoices).length)return '';
+ const c=importChoices;
+ return `<section class="importsetup"><h3>Confirm how to read this file</h3><p class="note">${esc(pendingImport.name)} · These choices apply to this upload.</p>
+ ${c.worksheets?`<div class="field"><label for="import-sheet">Roster worksheet</label><select id="import-sheet"><option value="">Choose a worksheet</option>${c.worksheets.map(s=>`<option ${importSettings.worksheet===s?'selected':''} value="${esc(s)}">${esc(s)}</option>`).join('')}</select></div>`:''}
+ ${c.needs_mapping?`<p class="note">Match the columns below. Other columns are ignored.</p>${Object.entries(importFields).map(([k,label])=>`<div class="field"><label for="map-${k}">${label}</label><select id="map-${k}" data-import-field="${k}"><option value="">${k==='certification_expires_at'?'Not supplied':'Choose a column'}</option>${c.headers.map(h=>`<option value="${esc(h)}" ${(importSettings.mapping?.[k]??c.mapping?.[k])===h?'selected':''}>${esc(h)}</option>`).join('')}</select></div>`).join('')}`:''}
+ ${c.needs_timezone?`<div class="field"><label for="import-timezone">Source time zone</label><input id="import-timezone" list="import-zones" value="${esc(importSettings.timezone||'')}" placeholder="e.g. America/New_York, UTC or +09:00"><datalist id="import-zones"><option value="UTC"><option value="America/New_York"><option value="Europe/London"><option value="Asia/Seoul"><option value="Asia/Kolkata"></datalist><small>Use the time zone of the dates in the file. Timestamps already containing an offset keep that offset. Clock-change ambiguities require an explicit offset in the affected cell.</small></div>`:''}
+ <button class="btn primary" data-action="confirm-import">Continue with these settings</button></section>`;
+}
+function captureImportSettings(){
+ if($('#import-sheet'))importSettings.worksheet=$('#import-sheet').value;
+ if($('#import-timezone'))importSettings.timezone=$('#import-timezone').value.trim();
+ const fields=[...document.querySelectorAll('[data-import-field]')];
+ if(fields.length)importSettings.mapping=Object.fromEntries(fields.map(el=>[el.dataset.importField,el.value]));
+}
 
-
-
-
-
+function renderUpload(error){
+ const selected=preview?.rules||rules;
+ shell(pagehead('Load a roster','Start with a file. Preview the data, run the check, and review the evidence.',`<span class="pill blue">CSV / XLSX</span>`)+`
+ <ol class="uploadsteps" aria-label="Roster review steps"><li class="${preview?'complete':'current'}"><span>01</span><div><strong>Upload a file</strong><small>Choose CSV or Excel</small></div></li><li class="${preview?'current':''}"><span>02</span><div><strong>Preview & check</strong><small>Confirm rows and rules</small></div></li><li><span>03</span><div><strong>Review findings</strong><small>Inspect the evidence</small></div></li></ol>
+ <div class="uploadgrid"><section class="card pad"><h2>${preview?'Ready to check':'Upload your roster'}</h2><p class="subtitle">${preview?'Your file has been validated. Confirm the preview, then run the check.':'Choose a fictional roster from your computer, or download the starter below.'}</p>
+ ${!preview?`<div class="starterfile"><div class="starterdescription">${icon('file')}<div><strong>Need a file for the demo?</strong><p>Quick walkthrough · 6 duties · 4 fictional crew</p><small>Download it, then upload the saved file below.</small></div></div><div class="actions"><a class="btn small" href="/samples/sample_roster.csv" download="sample_roster.csv" aria-label="Download CSV">CSV ↓</a><a class="btn small" href="/samples/sample_roster.xlsx" download="sample_roster.xlsx" aria-label="Download Excel">Excel ↓</a></div></div>`:''}
+ <div class="droptarget ${preview?'compact':''}" id="dropzone"><div>${icon('upload')}<h3>${preview?'Choose a different file':'Drop your roster here'}</h3>${!preview?'<p>CSV or Excel (.xlsx)</p>':''}<label class="btn ${preview?'':'primary'}" for="roster-file">${preview?'Replace file':'Browse files'}</label><input id="roster-file" type="file" accept=".csv,.xlsx" aria-label="Select roster file">${!preview?'<button class="textbutton" data-action="sample">Or load sample directly</button>':''}</div></div>
+ <div id="upload-error">${error?errHTML(error):''}</div>${importSetup()}${preview?`<div class="filelabel">${icon('file')}<div><strong>${esc(preview.filename)}</strong><small>${preview.row_count} duties / ${preview.crew_count} crew members / normalized to UTC${preview.import_settings?.worksheet?' / '+esc(preview.import_settings.worksheet):''}${preview.import_settings?.timezone?' / source zone: '+esc(preview.import_settings.timezone):''}</small></div></div><div class="previewtitle"><div><h3>Data preview</h3><small>${preview.preview.length} of ${preview.row_count} rows · rule snapshot v${selected.version}</small></div><button class="btn primary" data-action="run">Run roster check ${icon('arrow')}</button></div><div class="tablewrap"><table><thead><tr><th>Crew</th><th>Duty</th><th>Start · UTC</th><th>End · UTC</th></tr></thead><tbody>${preview.preview.map(r=>`<tr><td>${esc(r.crew_name)}<small>${esc(r.crew_id)} / ${esc(r.role)}</small></td><td>${esc(r.duty_id)}</td><td class="nowrap">${shortDate(r.duty_start)}</td><td class="nowrap">${shortDate(r.duty_end)}</td></tr>`).join('')}</tbody></table></div><div class="cardfoot"><span>This check will use the rule version captured with your upload: v${selected.version}</span></div>`:`<p class="note">PDF, DOCX and .xls are excluded. Select the roster worksheet when prompted. Excel dates are supported; confirm their source time zone if needed. A blank certification expiry produces a missing-evidence finding.</p>`}</section>${policyCard(selected)}</div>`);
+ const zone=$('#dropzone');zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag')});zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');if(e.dataTransfer.files.length!==1){renderUpload(new Error('Choose one roster file at a time.'));return}uploadFile(e.dataTransfer.files[0])});
+}
+async function uploadFile(file,retry=false){
+ if(!file)return;
+ if(!retry){pendingImport=file;importSettings={};importChoices={}}
+ const uploadRequest=++uploadGeneration;
+ preview=null;$('#upload-error').innerHTML='<p class="note">Validating the file…</p>';
+ const form=new FormData();form.append('file',file);form.append('options',JSON.stringify(importSettings));
+ try{const uploaded=await api('/api/uploads',{method:'POST',body:form});if(uploadRequest!==uploadGeneration)return;preview=uploaded;pendingImport=null;importChoices={};if(route==='upload')renderUpload()}
+ catch(error){if(uploadRequest===uploadGeneration&&user&&route==='upload'){if(error.import_options)importChoices={...importChoices,...error.import_options};renderUpload(error.import_options?null:error)}}
+}
 
 
 
@@ -109,5 +139,5 @@ const sampleCases=[
  {id:'clean_roster',title:'No configured flags',count:'24 duties · 8 crew',result:'0 findings',description:'A comparison roster that meets the initial demo thresholds. First-duty rest still lacks earlier context.',tone:'green'},
  {id:'input_errors',title:'Catch input mistakes',count:'2 duties · 2 crew',result:'Validation errors',description:'A timestamp without a timezone and a duty that ends when it starts. The file is rejected before checking.',tone:'red'}
 ];
-
+function renderSamples(){shell(pagehead('Sample library','Fictional people, IDs and duties. Ready to explore in CSV or Excel.','','Demo resources')+`<div class="callout">Expected findings use the initial 12-hour duty / 10-hour rest / valid-through-duty-end policy. Changing thresholds can change the counts.</div><div class="samplegrid">${sampleCases.map(c=>`<article class="card samplecard"><div class="sampletop">${icon('file')}<span class="pill ${c.tone}">${c.result}</span></div><h2>${c.title}</h2><small>${c.count}</small><p>${c.description}</p><div class="sampleactions"><button class="btn primary" data-action="load-sample" data-sample="${c.id}">Try this roster</button><a href="/samples/${c.id}.csv" download>CSV ↓</a><a href="/samples/${c.id}.xlsx" download>Excel ↓</a></div></article>`).join('')}</div>`)}
 
