@@ -1,0 +1,1336 @@
+[
+  {
+    "name": "sample_roster",
+    "rows": [
+      {
+        "crew_id": "C001",
+        "crew_name": "Alex Sample",
+        "role": "pilot",
+        "duty_id": "D101",
+        "duty_start": "2026-11-09T06:00:00Z",
+        "duty_end": "2026-11-09T20:00:00Z",
+        "certification_expires_at": "2027-01-01T00:00:00Z",
+        "row_number": 2
+      },
+      {
+        "crew_id": "C002",
+        "crew_name": "Jordan Sample",
+        "role": "pilot",
+        "duty_id": "D102",
+        "duty_start": "2026-11-09T15:00:00Z",
+        "duty_end": "2026-11-09T23:00:00Z",
+        "certification_expires_at": "2027-01-01T00:00:00Z",
+        "row_number": 3
+      },
+      {
+        "crew_id": "C002",
+        "crew_name": "Jordan Sample",
+        "role": "pilot",
+        "duty_id": "D103",
+        "duty_start": "2026-11-10T06:00:00Z",
+        "duty_end": "2026-11-10T14:00:00Z",
+        "certification_expires_at": "2027-01-01T00:00:00Z",
+        "row_number": 4
+      },
+      {
+        "crew_id": "C003",
+        "crew_name": "Morgan Sample",
+        "role": "cabin",
+        "duty_id": "D104",
+        "duty_start": "2026-11-09T08:00:00Z",
+        "duty_end": "2026-11-09T16:00:00Z",
+        "certification_expires_at": "2026-11-09T12:00:00Z",
+        "row_number": 5
+      },
+      {
+        "crew_id": "C004",
+        "crew_name": "Casey Sample",
+        "role": "cabin",
+        "duty_id": "D105",
+        "duty_start": "2026-11-09T07:00:00Z",
+        "duty_end": "2026-11-09T15:00:00Z",
+        "certification_expires_at": "2027-01-01T00:00:00Z",
+        "row_number": 6
+      },
+      {
+        "crew_id": "C004",
+        "crew_name": "Casey Sample",
+        "role": "cabin",
+        "duty_id": "D106",
+        "duty_start": "2026-11-10T07:00:00Z",
+        "duty_end": "2026-11-10T15:00:00Z",
+        "certification_expires_at": "2027-01-01T00:00:00Z",
+        "row_number": 7
+      }
+    ],
+    "expected": {
+      "rows": [
+        {
+          "crew_id": "C001",
+          "crew_name": "Alex Sample",
+          "role": "pilot",
+          "duty_id": "D101",
+          "duty_start": "2026-11-09T06:00:00Z",
+          "duty_end": "2026-11-09T20:00:00Z",
+          "certification_expires_at": "2027-01-01T00:00:00Z",
+          "row_number": 2
+        },
+        {
+          "crew_id": "C002",
+          "crew_name": "Jordan Sample",
+          "role": "pilot",
+          "duty_id": "D102",
+          "duty_start": "2026-11-09T15:00:00Z",
+          "duty_end": "2026-11-09T23:00:00Z",
+          "certification_expires_at": "2027-01-01T00:00:00Z",
+          "row_number": 3
+        },
+        {
+          "crew_id": "C002",
+          "crew_name": "Jordan Sample",
+          "role": "pilot",
+          "duty_id": "D103",
+          "duty_start": "2026-11-10T06:00:00Z",
+          "duty_end": "2026-11-10T14:00:00Z",
+          "certification_expires_at": "2027-01-01T00:00:00Z",
+          "row_number": 4
+        },
+        {
+          "crew_id": "C003",
+          "crew_name": "Morgan Sample",
+          "role": "cabin",
+          "duty_id": "D104",
+          "duty_start": "2026-11-09T08:00:00Z",
+          "duty_end": "2026-11-09T16:00:00Z",
+          "certification_expires_at": "2026-11-09T12:00:00Z",
+          "row_number": 5
+        },
+        {
+          "crew_id": "C004",
+          "crew_name": "Casey Sample",
+          "role": "cabin",
+          "duty_id": "D105",
+          "duty_start": "2026-11-09T07:00:00Z",
+          "duty_end": "2026-11-09T15:00:00Z",
+          "certification_expires_at": "2027-01-01T00:00:00Z",
+          "row_number": 6
+        },
+        {
+          "crew_id": "C004",
+          "crew_name": "Casey Sample",
+          "role": "cabin",
+          "duty_id": "D106",
+          "duty_start": "2026-11-10T07:00:00Z",
+          "duty_end": "2026-11-10T15:00:00Z",
+          "certification_expires_at": "2027-01-01T00:00:00Z",
+          "row_number": 7
+        }
+      ],
+      "flags": [
+        {
+          "id": "2-DUTY_LIMIT",
+          "row_number": 2,
+          "crew_id": "C001",
+          "duty_id": "D101",
+          "code": "DUTY_LIMIT",
+          "title": "Duty exceeds limit",
+          "observed": "14 h",
+          "expected": "\u2264 12 h",
+          "evidence": {
+            "duty_start": "2026-11-09T06:00:00Z",
+            "duty_end": "2026-11-09T20:00:00Z",
+            "difference_hours": 2.0
+          },
+          "severity": "review"
+        },
+        {
+          "id": "5-CERT_EXPIRED",
+          "row_number": 5,
+          "crew_id": "C003",
+          "duty_id": "D104",
+          "code": "CERT_EXPIRED",
+          "title": "Certification expires too early",
+          "observed": "2026-11-09T12:00:00Z",
+          "expected": "Valid through duty end",
+          "evidence": {
+            "certification_expires_at": "2026-11-09T12:00:00Z",
+            "assessment_time": "2026-11-09T16:00:00Z"
+          },
+          "severity": "review"
+        },
+        {
+          "id": "4-REST_MIN",
+          "row_number": 4,
+          "crew_id": "C002",
+          "duty_id": "D103",
+          "code": "REST_MIN",
+          "title": "Insufficient rest",
+          "observed": "7 h",
+          "expected": "\u2265 10 h",
+          "evidence": {
+            "previous_duty_id": "D102",
+            "previous_duty_end": "2026-11-09T23:00:00Z",
+            "next_duty_start": "2026-11-10T06:00:00Z"
+          },
+          "severity": "review"
+        }
+      ],
+      "summary": {
+        "duties": 6,
+        "crew": 4,
+        "flagged_duties": 3,
+        "findings": 3,
+        "no_flags": 3
+      },
+      "coverage": {
+        "first_duties_without_prior_rest": [
+          "D101",
+          "D102",
+          "D104",
+          "D105"
+        ],
+        "note": "Rest before each crew member\u2019s first duty is not assessed. Include preceding duties in this file. Historical uploads are not merged."
+      },
+      "engine_version": "1.0.0"
+    },
+    "csv": "crew_id,crew_name,role,duty_id,duty_start,duty_end,certification_expires_at\r\nC001,Alex Sample,pilot,D101,2026-11-09T06:00:00Z,2026-11-09T20:00:00Z,2027-01-01T00:00:00Z\r\nC002,Jordan Sample,pilot,D102,2026-11-09T15:00:00Z,2026-11-09T23:00:00Z,2027-01-01T00:00:00Z\r\nC002,Jordan Sample,pilot,D103,2026-11-10T06:00:00Z,2026-11-10T14:00:00Z,2027-01-01T00:00:00Z\r\nC003,Morgan Sample,cabin,D104,2026-11-09T08:00:00Z,2026-11-09T16:00:00Z,2026-11-09T12:00:00Z\r\nC004,Casey Sample,cabin,D105,2026-11-09T07:00:00Z,2026-11-09T15:00:00Z,2027-01-01T00:00:00Z\r\nC004,Casey Sample,cabin,D106,2026-11-10T07:00:00Z,2026-11-10T15:00:00Z,2027-01-01T00:00:00Z\r\n"
+  },
+  {
+    "name": "clean_roster",
+    "rows": [
+      {
+        "crew_id": "DEMO-001",
+        "crew_name": "Avery Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D101",
+        "duty_start": "2026-11-16T06:00:00Z",
+        "duty_end": "2026-11-16T14:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 2
+      },
+      {
+        "crew_id": "DEMO-002",
+        "crew_name": "Blake Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D102",
+        "duty_start": "2026-11-16T07:00:00Z",
+        "duty_end": "2026-11-16T15:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 3
+      },
+      {
+        "crew_id": "DEMO-003",
+        "crew_name": "Cameron Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D103",
+        "duty_start": "2026-11-16T08:00:00Z",
+        "duty_end": "2026-11-16T16:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 4
+      },
+      {
+        "crew_id": "DEMO-004",
+        "crew_name": "Drew Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D104",
+        "duty_start": "2026-11-16T09:00:00Z",
+        "duty_end": "2026-11-16T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 5
+      },
+      {
+        "crew_id": "DEMO-005",
+        "crew_name": "Emery Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D105",
+        "duty_start": "2026-11-16T06:00:00Z",
+        "duty_end": "2026-11-16T14:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 6
+      },
+      {
+        "crew_id": "DEMO-006",
+        "crew_name": "Finley Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D106",
+        "duty_start": "2026-11-16T07:00:00Z",
+        "duty_end": "2026-11-16T15:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 7
+      },
+      {
+        "crew_id": "DEMO-007",
+        "crew_name": "Harper Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D107",
+        "duty_start": "2026-11-16T08:00:00Z",
+        "duty_end": "2026-11-16T16:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 8
+      },
+      {
+        "crew_id": "DEMO-008",
+        "crew_name": "Jamie Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D108",
+        "duty_start": "2026-11-16T09:00:00Z",
+        "duty_end": "2026-11-16T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 9
+      },
+      {
+        "crew_id": "DEMO-001",
+        "crew_name": "Avery Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D201",
+        "duty_start": "2026-11-17T06:00:00Z",
+        "duty_end": "2026-11-17T14:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 10
+      },
+      {
+        "crew_id": "DEMO-002",
+        "crew_name": "Blake Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D202",
+        "duty_start": "2026-11-17T07:00:00Z",
+        "duty_end": "2026-11-17T15:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 11
+      },
+      {
+        "crew_id": "DEMO-003",
+        "crew_name": "Cameron Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D203",
+        "duty_start": "2026-11-17T08:00:00Z",
+        "duty_end": "2026-11-17T16:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 12
+      },
+      {
+        "crew_id": "DEMO-004",
+        "crew_name": "Drew Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D204",
+        "duty_start": "2026-11-17T09:00:00Z",
+        "duty_end": "2026-11-17T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 13
+      },
+      {
+        "crew_id": "DEMO-005",
+        "crew_name": "Emery Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D205",
+        "duty_start": "2026-11-17T06:00:00Z",
+        "duty_end": "2026-11-17T14:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 14
+      },
+      {
+        "crew_id": "DEMO-006",
+        "crew_name": "Finley Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D206",
+        "duty_start": "2026-11-17T07:00:00Z",
+        "duty_end": "2026-11-17T15:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 15
+      },
+      {
+        "crew_id": "DEMO-007",
+        "crew_name": "Harper Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D207",
+        "duty_start": "2026-11-17T08:00:00Z",
+        "duty_end": "2026-11-17T16:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 16
+      },
+      {
+        "crew_id": "DEMO-008",
+        "crew_name": "Jamie Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D208",
+        "duty_start": "2026-11-17T09:00:00Z",
+        "duty_end": "2026-11-17T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 17
+      },
+      {
+        "crew_id": "DEMO-001",
+        "crew_name": "Avery Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D301",
+        "duty_start": "2026-11-18T06:00:00Z",
+        "duty_end": "2026-11-18T14:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 18
+      },
+      {
+        "crew_id": "DEMO-002",
+        "crew_name": "Blake Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D302",
+        "duty_start": "2026-11-18T07:00:00Z",
+        "duty_end": "2026-11-18T15:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 19
+      },
+      {
+        "crew_id": "DEMO-003",
+        "crew_name": "Cameron Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D303",
+        "duty_start": "2026-11-18T08:00:00Z",
+        "duty_end": "2026-11-18T16:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 20
+      },
+      {
+        "crew_id": "DEMO-004",
+        "crew_name": "Drew Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D304",
+        "duty_start": "2026-11-18T09:00:00Z",
+        "duty_end": "2026-11-18T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 21
+      },
+      {
+        "crew_id": "DEMO-005",
+        "crew_name": "Emery Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D305",
+        "duty_start": "2026-11-18T06:00:00Z",
+        "duty_end": "2026-11-18T14:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 22
+      },
+      {
+        "crew_id": "DEMO-006",
+        "crew_name": "Finley Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D306",
+        "duty_start": "2026-11-18T07:00:00Z",
+        "duty_end": "2026-11-18T15:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 23
+      },
+      {
+        "crew_id": "DEMO-007",
+        "crew_name": "Harper Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D307",
+        "duty_start": "2026-11-18T08:00:00Z",
+        "duty_end": "2026-11-18T16:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 24
+      },
+      {
+        "crew_id": "DEMO-008",
+        "crew_name": "Jamie Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D308",
+        "duty_start": "2026-11-18T09:00:00Z",
+        "duty_end": "2026-11-18T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 25
+      }
+    ],
+    "expected": {
+      "rows": [
+        {
+          "crew_id": "DEMO-001",
+          "crew_name": "Avery Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D101",
+          "duty_start": "2026-11-16T06:00:00Z",
+          "duty_end": "2026-11-16T14:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 2
+        },
+        {
+          "crew_id": "DEMO-002",
+          "crew_name": "Blake Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D102",
+          "duty_start": "2026-11-16T07:00:00Z",
+          "duty_end": "2026-11-16T15:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 3
+        },
+        {
+          "crew_id": "DEMO-003",
+          "crew_name": "Cameron Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D103",
+          "duty_start": "2026-11-16T08:00:00Z",
+          "duty_end": "2026-11-16T16:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 4
+        },
+        {
+          "crew_id": "DEMO-004",
+          "crew_name": "Drew Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D104",
+          "duty_start": "2026-11-16T09:00:00Z",
+          "duty_end": "2026-11-16T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 5
+        },
+        {
+          "crew_id": "DEMO-005",
+          "crew_name": "Emery Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D105",
+          "duty_start": "2026-11-16T06:00:00Z",
+          "duty_end": "2026-11-16T14:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 6
+        },
+        {
+          "crew_id": "DEMO-006",
+          "crew_name": "Finley Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D106",
+          "duty_start": "2026-11-16T07:00:00Z",
+          "duty_end": "2026-11-16T15:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 7
+        },
+        {
+          "crew_id": "DEMO-007",
+          "crew_name": "Harper Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D107",
+          "duty_start": "2026-11-16T08:00:00Z",
+          "duty_end": "2026-11-16T16:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 8
+        },
+        {
+          "crew_id": "DEMO-008",
+          "crew_name": "Jamie Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D108",
+          "duty_start": "2026-11-16T09:00:00Z",
+          "duty_end": "2026-11-16T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 9
+        },
+        {
+          "crew_id": "DEMO-001",
+          "crew_name": "Avery Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D201",
+          "duty_start": "2026-11-17T06:00:00Z",
+          "duty_end": "2026-11-17T14:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 10
+        },
+        {
+          "crew_id": "DEMO-002",
+          "crew_name": "Blake Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D202",
+          "duty_start": "2026-11-17T07:00:00Z",
+          "duty_end": "2026-11-17T15:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 11
+        },
+        {
+          "crew_id": "DEMO-003",
+          "crew_name": "Cameron Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D203",
+          "duty_start": "2026-11-17T08:00:00Z",
+          "duty_end": "2026-11-17T16:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 12
+        },
+        {
+          "crew_id": "DEMO-004",
+          "crew_name": "Drew Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D204",
+          "duty_start": "2026-11-17T09:00:00Z",
+          "duty_end": "2026-11-17T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 13
+        },
+        {
+          "crew_id": "DEMO-005",
+          "crew_name": "Emery Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D205",
+          "duty_start": "2026-11-17T06:00:00Z",
+          "duty_end": "2026-11-17T14:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 14
+        },
+        {
+          "crew_id": "DEMO-006",
+          "crew_name": "Finley Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D206",
+          "duty_start": "2026-11-17T07:00:00Z",
+          "duty_end": "2026-11-17T15:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 15
+        },
+        {
+          "crew_id": "DEMO-007",
+          "crew_name": "Harper Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D207",
+          "duty_start": "2026-11-17T08:00:00Z",
+          "duty_end": "2026-11-17T16:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 16
+        },
+        {
+          "crew_id": "DEMO-008",
+          "crew_name": "Jamie Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D208",
+          "duty_start": "2026-11-17T09:00:00Z",
+          "duty_end": "2026-11-17T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 17
+        },
+        {
+          "crew_id": "DEMO-001",
+          "crew_name": "Avery Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D301",
+          "duty_start": "2026-11-18T06:00:00Z",
+          "duty_end": "2026-11-18T14:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 18
+        },
+        {
+          "crew_id": "DEMO-002",
+          "crew_name": "Blake Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D302",
+          "duty_start": "2026-11-18T07:00:00Z",
+          "duty_end": "2026-11-18T15:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 19
+        },
+        {
+          "crew_id": "DEMO-003",
+          "crew_name": "Cameron Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D303",
+          "duty_start": "2026-11-18T08:00:00Z",
+          "duty_end": "2026-11-18T16:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 20
+        },
+        {
+          "crew_id": "DEMO-004",
+          "crew_name": "Drew Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D304",
+          "duty_start": "2026-11-18T09:00:00Z",
+          "duty_end": "2026-11-18T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 21
+        },
+        {
+          "crew_id": "DEMO-005",
+          "crew_name": "Emery Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D305",
+          "duty_start": "2026-11-18T06:00:00Z",
+          "duty_end": "2026-11-18T14:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 22
+        },
+        {
+          "crew_id": "DEMO-006",
+          "crew_name": "Finley Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D306",
+          "duty_start": "2026-11-18T07:00:00Z",
+          "duty_end": "2026-11-18T15:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 23
+        },
+        {
+          "crew_id": "DEMO-007",
+          "crew_name": "Harper Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D307",
+          "duty_start": "2026-11-18T08:00:00Z",
+          "duty_end": "2026-11-18T16:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 24
+        },
+        {
+          "crew_id": "DEMO-008",
+          "crew_name": "Jamie Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D308",
+          "duty_start": "2026-11-18T09:00:00Z",
+          "duty_end": "2026-11-18T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 25
+        }
+      ],
+      "flags": [],
+      "summary": {
+        "duties": 24,
+        "crew": 8,
+        "flagged_duties": 0,
+        "findings": 0,
+        "no_flags": 24
+      },
+      "coverage": {
+        "first_duties_without_prior_rest": [
+          "DEMO-D101",
+          "DEMO-D102",
+          "DEMO-D103",
+          "DEMO-D104",
+          "DEMO-D105",
+          "DEMO-D106",
+          "DEMO-D107",
+          "DEMO-D108"
+        ],
+        "note": "Rest before each crew member\u2019s first duty is not assessed. Include preceding duties in this file. Historical uploads are not merged."
+      },
+      "engine_version": "1.0.0"
+    },
+    "csv": "crew_id,crew_name,role,duty_id,duty_start,duty_end,certification_expires_at\r\nDEMO-001,Avery Sample,pilot,DEMO-D101,2026-11-16T06:00:00Z,2026-11-16T14:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-002,Blake Sample,pilot,DEMO-D102,2026-11-16T07:00:00Z,2026-11-16T15:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-003,Cameron Sample,pilot,DEMO-D103,2026-11-16T08:00:00Z,2026-11-16T16:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-004,Drew Sample,pilot,DEMO-D104,2026-11-16T09:00:00Z,2026-11-16T17:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-005,Emery Sample,cabin,DEMO-D105,2026-11-16T06:00:00Z,2026-11-16T14:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-006,Finley Sample,cabin,DEMO-D106,2026-11-16T07:00:00Z,2026-11-16T15:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-007,Harper Sample,cabin,DEMO-D107,2026-11-16T08:00:00Z,2026-11-16T16:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-008,Jamie Sample,cabin,DEMO-D108,2026-11-16T09:00:00Z,2026-11-16T17:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-001,Avery Sample,pilot,DEMO-D201,2026-11-17T06:00:00Z,2026-11-17T14:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-002,Blake Sample,pilot,DEMO-D202,2026-11-17T07:00:00Z,2026-11-17T15:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-003,Cameron Sample,pilot,DEMO-D203,2026-11-17T08:00:00Z,2026-11-17T16:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-004,Drew Sample,pilot,DEMO-D204,2026-11-17T09:00:00Z,2026-11-17T17:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-005,Emery Sample,cabin,DEMO-D205,2026-11-17T06:00:00Z,2026-11-17T14:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-006,Finley Sample,cabin,DEMO-D206,2026-11-17T07:00:00Z,2026-11-17T15:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-007,Harper Sample,cabin,DEMO-D207,2026-11-17T08:00:00Z,2026-11-17T16:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-008,Jamie Sample,cabin,DEMO-D208,2026-11-17T09:00:00Z,2026-11-17T17:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-001,Avery Sample,pilot,DEMO-D301,2026-11-18T06:00:00Z,2026-11-18T14:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-002,Blake Sample,pilot,DEMO-D302,2026-11-18T07:00:00Z,2026-11-18T15:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-003,Cameron Sample,pilot,DEMO-D303,2026-11-18T08:00:00Z,2026-11-18T16:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-004,Drew Sample,pilot,DEMO-D304,2026-11-18T09:00:00Z,2026-11-18T17:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-005,Emery Sample,cabin,DEMO-D305,2026-11-18T06:00:00Z,2026-11-18T14:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-006,Finley Sample,cabin,DEMO-D306,2026-11-18T07:00:00Z,2026-11-18T15:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-007,Harper Sample,cabin,DEMO-D307,2026-11-18T08:00:00Z,2026-11-18T16:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-008,Jamie Sample,cabin,DEMO-D308,2026-11-18T09:00:00Z,2026-11-18T17:00:00Z,2027-05-01T00:00:00Z\r\n"
+  },
+  {
+    "name": "review_roster",
+    "rows": [
+      {
+        "crew_id": "DEMO-001",
+        "crew_name": "Avery Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D101",
+        "duty_start": "2026-11-16T06:00:00Z",
+        "duty_end": "2026-11-16T20:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 2
+      },
+      {
+        "crew_id": "DEMO-002",
+        "crew_name": "Blake Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D102",
+        "duty_start": "2026-11-16T07:00:00Z",
+        "duty_end": "2026-11-16T23:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 3
+      },
+      {
+        "crew_id": "DEMO-003",
+        "crew_name": "Cameron Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D103",
+        "duty_start": "2026-11-16T08:00:00Z",
+        "duty_end": "2026-11-16T16:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 4
+      },
+      {
+        "crew_id": "DEMO-004",
+        "crew_name": "Drew Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D104",
+        "duty_start": "2026-11-16T09:00:00Z",
+        "duty_end": "2026-11-16T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 5
+      },
+      {
+        "crew_id": "DEMO-005",
+        "crew_name": "Emery Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D105",
+        "duty_start": "2026-11-16T06:00:00Z",
+        "duty_end": "2026-11-16T14:00:00Z",
+        "certification_expires_at": "2026-11-16T10:00:00Z",
+        "row_number": 6
+      },
+      {
+        "crew_id": "DEMO-006",
+        "crew_name": "Finley Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D106",
+        "duty_start": "2026-11-16T07:00:00Z",
+        "duty_end": "2026-11-16T15:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 7
+      },
+      {
+        "crew_id": "DEMO-007",
+        "crew_name": "Harper Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D107",
+        "duty_start": "2026-11-16T08:00:00Z",
+        "duty_end": "2026-11-16T16:00:00Z",
+        "certification_expires_at": "",
+        "row_number": 8
+      },
+      {
+        "crew_id": "DEMO-008",
+        "crew_name": "Jamie Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D108",
+        "duty_start": "2026-11-16T09:00:00Z",
+        "duty_end": "2026-11-16T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 9
+      },
+      {
+        "crew_id": "DEMO-001",
+        "crew_name": "Avery Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D201",
+        "duty_start": "2026-11-17T06:00:00Z",
+        "duty_end": "2026-11-17T14:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 10
+      },
+      {
+        "crew_id": "DEMO-002",
+        "crew_name": "Blake Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D202",
+        "duty_start": "2026-11-17T07:00:00Z",
+        "duty_end": "2026-11-17T15:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 11
+      },
+      {
+        "crew_id": "DEMO-003",
+        "crew_name": "Cameron Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D203",
+        "duty_start": "2026-11-17T08:00:00Z",
+        "duty_end": "2026-11-17T16:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 12
+      },
+      {
+        "crew_id": "DEMO-004",
+        "crew_name": "Drew Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D204",
+        "duty_start": "2026-11-17T09:00:00Z",
+        "duty_end": "2026-11-17T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 13
+      },
+      {
+        "crew_id": "DEMO-005",
+        "crew_name": "Emery Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D205",
+        "duty_start": "2026-11-17T06:00:00Z",
+        "duty_end": "2026-11-17T14:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 14
+      },
+      {
+        "crew_id": "DEMO-006",
+        "crew_name": "Finley Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D206",
+        "duty_start": "2026-11-17T07:00:00Z",
+        "duty_end": "2026-11-17T15:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 15
+      },
+      {
+        "crew_id": "DEMO-007",
+        "crew_name": "Harper Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D207",
+        "duty_start": "2026-11-17T08:00:00Z",
+        "duty_end": "2026-11-17T16:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 16
+      },
+      {
+        "crew_id": "DEMO-008",
+        "crew_name": "Jamie Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D208",
+        "duty_start": "2026-11-17T09:00:00Z",
+        "duty_end": "2026-11-17T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 17
+      },
+      {
+        "crew_id": "DEMO-001",
+        "crew_name": "Avery Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D301",
+        "duty_start": "2026-11-18T06:00:00Z",
+        "duty_end": "2026-11-18T14:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 18
+      },
+      {
+        "crew_id": "DEMO-002",
+        "crew_name": "Blake Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D302",
+        "duty_start": "2026-11-18T07:00:00Z",
+        "duty_end": "2026-11-18T15:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 19
+      },
+      {
+        "crew_id": "DEMO-003",
+        "crew_name": "Cameron Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D303",
+        "duty_start": "2026-11-18T08:00:00Z",
+        "duty_end": "2026-11-18T16:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 20
+      },
+      {
+        "crew_id": "DEMO-004",
+        "crew_name": "Drew Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-D304",
+        "duty_start": "2026-11-18T09:00:00Z",
+        "duty_end": "2026-11-18T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 21
+      },
+      {
+        "crew_id": "DEMO-005",
+        "crew_name": "Emery Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D305",
+        "duty_start": "2026-11-18T06:00:00Z",
+        "duty_end": "2026-11-18T14:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 22
+      },
+      {
+        "crew_id": "DEMO-006",
+        "crew_name": "Finley Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D306",
+        "duty_start": "2026-11-18T07:00:00Z",
+        "duty_end": "2026-11-18T15:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 23
+      },
+      {
+        "crew_id": "DEMO-007",
+        "crew_name": "Harper Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D307",
+        "duty_start": "2026-11-18T08:00:00Z",
+        "duty_end": "2026-11-18T16:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 24
+      },
+      {
+        "crew_id": "DEMO-008",
+        "crew_name": "Jamie Sample",
+        "role": "cabin",
+        "duty_id": "DEMO-D308",
+        "duty_start": "2026-11-18T09:00:00Z",
+        "duty_end": "2026-11-18T17:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 25
+      },
+      {
+        "crew_id": "DEMO-003",
+        "crew_name": "Cameron Sample",
+        "role": "pilot",
+        "duty_id": "DEMO-OVERLAP",
+        "duty_start": "2026-11-16T14:00:00Z",
+        "duty_end": "2026-11-16T18:00:00Z",
+        "certification_expires_at": "2027-05-01T00:00:00Z",
+        "row_number": 26
+      }
+    ],
+    "expected": {
+      "rows": [
+        {
+          "crew_id": "DEMO-001",
+          "crew_name": "Avery Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D101",
+          "duty_start": "2026-11-16T06:00:00Z",
+          "duty_end": "2026-11-16T20:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 2
+        },
+        {
+          "crew_id": "DEMO-002",
+          "crew_name": "Blake Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D102",
+          "duty_start": "2026-11-16T07:00:00Z",
+          "duty_end": "2026-11-16T23:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 3
+        },
+        {
+          "crew_id": "DEMO-003",
+          "crew_name": "Cameron Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D103",
+          "duty_start": "2026-11-16T08:00:00Z",
+          "duty_end": "2026-11-16T16:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 4
+        },
+        {
+          "crew_id": "DEMO-004",
+          "crew_name": "Drew Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D104",
+          "duty_start": "2026-11-16T09:00:00Z",
+          "duty_end": "2026-11-16T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 5
+        },
+        {
+          "crew_id": "DEMO-005",
+          "crew_name": "Emery Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D105",
+          "duty_start": "2026-11-16T06:00:00Z",
+          "duty_end": "2026-11-16T14:00:00Z",
+          "certification_expires_at": "2026-11-16T10:00:00Z",
+          "row_number": 6
+        },
+        {
+          "crew_id": "DEMO-006",
+          "crew_name": "Finley Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D106",
+          "duty_start": "2026-11-16T07:00:00Z",
+          "duty_end": "2026-11-16T15:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 7
+        },
+        {
+          "crew_id": "DEMO-007",
+          "crew_name": "Harper Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D107",
+          "duty_start": "2026-11-16T08:00:00Z",
+          "duty_end": "2026-11-16T16:00:00Z",
+          "certification_expires_at": "",
+          "row_number": 8
+        },
+        {
+          "crew_id": "DEMO-008",
+          "crew_name": "Jamie Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D108",
+          "duty_start": "2026-11-16T09:00:00Z",
+          "duty_end": "2026-11-16T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 9
+        },
+        {
+          "crew_id": "DEMO-001",
+          "crew_name": "Avery Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D201",
+          "duty_start": "2026-11-17T06:00:00Z",
+          "duty_end": "2026-11-17T14:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 10
+        },
+        {
+          "crew_id": "DEMO-002",
+          "crew_name": "Blake Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D202",
+          "duty_start": "2026-11-17T07:00:00Z",
+          "duty_end": "2026-11-17T15:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 11
+        },
+        {
+          "crew_id": "DEMO-003",
+          "crew_name": "Cameron Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D203",
+          "duty_start": "2026-11-17T08:00:00Z",
+          "duty_end": "2026-11-17T16:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 12
+        },
+        {
+          "crew_id": "DEMO-004",
+          "crew_name": "Drew Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D204",
+          "duty_start": "2026-11-17T09:00:00Z",
+          "duty_end": "2026-11-17T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 13
+        },
+        {
+          "crew_id": "DEMO-005",
+          "crew_name": "Emery Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D205",
+          "duty_start": "2026-11-17T06:00:00Z",
+          "duty_end": "2026-11-17T14:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 14
+        },
+        {
+          "crew_id": "DEMO-006",
+          "crew_name": "Finley Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D206",
+          "duty_start": "2026-11-17T07:00:00Z",
+          "duty_end": "2026-11-17T15:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 15
+        },
+        {
+          "crew_id": "DEMO-007",
+          "crew_name": "Harper Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D207",
+          "duty_start": "2026-11-17T08:00:00Z",
+          "duty_end": "2026-11-17T16:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 16
+        },
+        {
+          "crew_id": "DEMO-008",
+          "crew_name": "Jamie Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D208",
+          "duty_start": "2026-11-17T09:00:00Z",
+          "duty_end": "2026-11-17T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 17
+        },
+        {
+          "crew_id": "DEMO-001",
+          "crew_name": "Avery Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D301",
+          "duty_start": "2026-11-18T06:00:00Z",
+          "duty_end": "2026-11-18T14:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 18
+        },
+        {
+          "crew_id": "DEMO-002",
+          "crew_name": "Blake Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D302",
+          "duty_start": "2026-11-18T07:00:00Z",
+          "duty_end": "2026-11-18T15:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 19
+        },
+        {
+          "crew_id": "DEMO-003",
+          "crew_name": "Cameron Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D303",
+          "duty_start": "2026-11-18T08:00:00Z",
+          "duty_end": "2026-11-18T16:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 20
+        },
+        {
+          "crew_id": "DEMO-004",
+          "crew_name": "Drew Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-D304",
+          "duty_start": "2026-11-18T09:00:00Z",
+          "duty_end": "2026-11-18T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 21
+        },
+        {
+          "crew_id": "DEMO-005",
+          "crew_name": "Emery Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D305",
+          "duty_start": "2026-11-18T06:00:00Z",
+          "duty_end": "2026-11-18T14:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 22
+        },
+        {
+          "crew_id": "DEMO-006",
+          "crew_name": "Finley Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D306",
+          "duty_start": "2026-11-18T07:00:00Z",
+          "duty_end": "2026-11-18T15:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 23
+        },
+        {
+          "crew_id": "DEMO-007",
+          "crew_name": "Harper Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D307",
+          "duty_start": "2026-11-18T08:00:00Z",
+          "duty_end": "2026-11-18T16:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 24
+        },
+        {
+          "crew_id": "DEMO-008",
+          "crew_name": "Jamie Sample",
+          "role": "cabin",
+          "duty_id": "DEMO-D308",
+          "duty_start": "2026-11-18T09:00:00Z",
+          "duty_end": "2026-11-18T17:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 25
+        },
+        {
+          "crew_id": "DEMO-003",
+          "crew_name": "Cameron Sample",
+          "role": "pilot",
+          "duty_id": "DEMO-OVERLAP",
+          "duty_start": "2026-11-16T14:00:00Z",
+          "duty_end": "2026-11-16T18:00:00Z",
+          "certification_expires_at": "2027-05-01T00:00:00Z",
+          "row_number": 26
+        }
+      ],
+      "flags": [
+        {
+          "id": "2-DUTY_LIMIT",
+          "row_number": 2,
+          "crew_id": "DEMO-001",
+          "duty_id": "DEMO-D101",
+          "code": "DUTY_LIMIT",
+          "title": "Duty exceeds limit",
+          "observed": "14 h",
+          "expected": "\u2264 12 h",
+          "evidence": {
+            "duty_start": "2026-11-16T06:00:00Z",
+            "duty_end": "2026-11-16T20:00:00Z",
+            "difference_hours": 2.0
+          },
+          "severity": "review"
+        },
+        {
+          "id": "3-DUTY_LIMIT",
+          "row_number": 3,
+          "crew_id": "DEMO-002",
+          "duty_id": "DEMO-D102",
+          "code": "DUTY_LIMIT",
+          "title": "Duty exceeds limit",
+          "observed": "16 h",
+          "expected": "\u2264 12 h",
+          "evidence": {
+            "duty_start": "2026-11-16T07:00:00Z",
+            "duty_end": "2026-11-16T23:00:00Z",
+            "difference_hours": 4.0
+          },
+          "severity": "review"
+        },
+        {
+          "id": "6-CERT_EXPIRED",
+          "row_number": 6,
+          "crew_id": "DEMO-005",
+          "duty_id": "DEMO-D105",
+          "code": "CERT_EXPIRED",
+          "title": "Certification expires too early",
+          "observed": "2026-11-16T10:00:00Z",
+          "expected": "Valid through duty end",
+          "evidence": {
+            "certification_expires_at": "2026-11-16T10:00:00Z",
+            "assessment_time": "2026-11-16T14:00:00Z"
+          },
+          "severity": "review"
+        },
+        {
+          "id": "8-CERT_MISSING",
+          "row_number": 8,
+          "crew_id": "DEMO-007",
+          "duty_id": "DEMO-D107",
+          "code": "CERT_MISSING",
+          "title": "Certification evidence missing",
+          "observed": "No expiry supplied",
+          "expected": "Expiry timestamp required",
+          "evidence": {
+            "assessment_time": "2026-11-16T16:00:00Z"
+          },
+          "severity": "incomplete"
+        },
+        {
+          "id": "11-REST_MIN",
+          "row_number": 11,
+          "crew_id": "DEMO-002",
+          "duty_id": "DEMO-D202",
+          "code": "REST_MIN",
+          "title": "Insufficient rest",
+          "observed": "8 h",
+          "expected": "\u2265 10 h",
+          "evidence": {
+            "previous_duty_id": "DEMO-D102",
+            "previous_duty_end": "2026-11-16T23:00:00Z",
+            "next_duty_start": "2026-11-17T07:00:00Z"
+          },
+          "severity": "review"
+        },
+        {
+          "id": "26-DUTY_OVERLAP",
+          "row_number": 26,
+          "crew_id": "DEMO-003",
+          "duty_id": "DEMO-OVERLAP",
+          "code": "DUTY_OVERLAP",
+          "title": "Duties overlap",
+          "observed": "2 h overlap",
+          "expected": "No overlap",
+          "evidence": {
+            "previous_duty_id": "DEMO-D103",
+            "previous_duty_end": "2026-11-16T16:00:00Z",
+            "next_duty_start": "2026-11-16T14:00:00Z"
+          },
+          "severity": "review"
+        }
+      ],
+      "summary": {
+        "duties": 25,
+        "crew": 8,
+        "flagged_duties": 6,
+        "findings": 6,
+        "no_flags": 19
+      },
+      "coverage": {
+        "first_duties_without_prior_rest": [
+          "DEMO-D101",
+          "DEMO-D102",
+          "DEMO-D103",
+          "DEMO-D104",
+          "DEMO-D105",
+          "DEMO-D106",
+          "DEMO-D107",
+          "DEMO-D108"
+        ],
+        "note": "Rest before each crew member\u2019s first duty is not assessed. Include preceding duties in this file. Historical uploads are not merged."
+      },
+      "engine_version": "1.0.0"
+    },
+    "csv": "crew_id,crew_name,role,duty_id,duty_start,duty_end,certification_expires_at\r\nDEMO-001,Avery Sample,pilot,DEMO-D101,2026-11-16T06:00:00Z,2026-11-16T20:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-002,Blake Sample,pilot,DEMO-D102,2026-11-16T07:00:00Z,2026-11-16T23:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-003,Cameron Sample,pilot,DEMO-D103,2026-11-16T08:00:00Z,2026-11-16T16:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-004,Drew Sample,pilot,DEMO-D104,2026-11-16T09:00:00Z,2026-11-16T17:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-005,Emery Sample,cabin,DEMO-D105,2026-11-16T06:00:00Z,2026-11-16T14:00:00Z,2026-11-16T10:00:00Z\r\nDEMO-006,Finley Sample,cabin,DEMO-D106,2026-11-16T07:00:00Z,2026-11-16T15:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-007,Harper Sample,cabin,DEMO-D107,2026-11-16T08:00:00Z,2026-11-16T16:00:00Z,\r\nDEMO-008,Jamie Sample,cabin,DEMO-D108,2026-11-16T09:00:00Z,2026-11-16T17:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-001,Avery Sample,pilot,DEMO-D201,2026-11-17T06:00:00Z,2026-11-17T14:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-002,Blake Sample,pilot,DEMO-D202,2026-11-17T07:00:00Z,2026-11-17T15:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-003,Cameron Sample,pilot,DEMO-D203,2026-11-17T08:00:00Z,2026-11-17T16:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-004,Drew Sample,pilot,DEMO-D204,2026-11-17T09:00:00Z,2026-11-17T17:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-005,Emery Sample,cabin,DEMO-D205,2026-11-17T06:00:00Z,2026-11-17T14:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-006,Finley Sample,cabin,DEMO-D206,2026-11-17T07:00:00Z,2026-11-17T15:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-007,Harper Sample,cabin,DEMO-D207,2026-11-17T08:00:00Z,2026-11-17T16:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-008,Jamie Sample,cabin,DEMO-D208,2026-11-17T09:00:00Z,2026-11-17T17:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-001,Avery Sample,pilot,DEMO-D301,2026-11-18T06:00:00Z,2026-11-18T14:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-002,Blake Sample,pilot,DEMO-D302,2026-11-18T07:00:00Z,2026-11-18T15:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-003,Cameron Sample,pilot,DEMO-D303,2026-11-18T08:00:00Z,2026-11-18T16:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-004,Drew Sample,pilot,DEMO-D304,2026-11-18T09:00:00Z,2026-11-18T17:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-005,Emery Sample,cabin,DEMO-D305,2026-11-18T06:00:00Z,2026-11-18T14:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-006,Finley Sample,cabin,DEMO-D306,2026-11-18T07:00:00Z,2026-11-18T15:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-007,Harper Sample,cabin,DEMO-D307,2026-11-18T08:00:00Z,2026-11-18T16:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-008,Jamie Sample,cabin,DEMO-D308,2026-11-18T09:00:00Z,2026-11-18T17:00:00Z,2027-05-01T00:00:00Z\r\nDEMO-003,Cameron Sample,pilot,DEMO-OVERLAP,2026-11-16T14:00:00Z,2026-11-16T18:00:00Z,2027-05-01T00:00:00Z\r\n"
+  }
+]
