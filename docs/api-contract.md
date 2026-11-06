@@ -1,289 +1,97 @@
-# API & Integration Contract: Crew Roster Compliance Checker
+# CrewCheck API and integration contract
 
-> **Status:** Baseline Contract (Established in [CRE-5](https://linear.app/crew-roster/issue/CRE-5/initialize-project-structure-and-integration-contracts))  
-> **Applicability:** Shared integration contract for Local FastAPI and Hosted Next.js/Worker implementations.
+This contract describes the CRE-6 parser/checker and CRE-7 backend used by the CRE-8 UI. It replaces the proposed CRE-5 field examples with the implemented payloads. The default 12-hour duty / 10-hour rest policy is illustrative; it is not a complete FAA or EASA regulation.
 
----
+## Environments and access
 
-## 1. System Architectures & Environments
+| Surface | Runtime and storage | Identity |
+| --- | --- | --- |
+| Local | FastAPI, SQLite | Seeded scheduler/manager accounts; eight-hour cookie sessions |
+| Hosted demo | Next.js 16 / Vinext, Cloudflare Worker, D1 | Browser workspace with selectable demo role; seven-day workspace access |
+| Planned internal deployment | Application server and PostgreSQL | Company identity and assigned permissions; not implemented |
 
-This project maintains two deployment surfaces that adhere to this unified contract:
+All endpoints are same-origin. Authenticated POST requests require `X-CSRF-Token` from the identity response, except sign-in. Local manager access covers all local users; hosted manager access covers only the same visitor workspace. Role selection in the hosted demo is not employee authentication.
 
-| Environment | Runtime & Stack | Persistence | Access Model |
-| :--- | :--- | :--- | :--- |
-| **Local Reference** | Python 3.11+ / FastAPI / Uvicorn | Local SQLite (`data/crewcheck.db`) | Local credentials (`SchedulerDemo!2026`, `ManagerDemo!2026`) with 8-hour sessions and CSRF protection. |
-| **Hosted Web Demo** | Next.js 15 / Cloudflare Worker | SQLite-based Cloudflare D1 | Isolated visitor workspaces with demo role selector and append-only audit event logging. |
-| **Future Production** | Scalable container service | PostgreSQL (Dedicated cluster) | Enterprise SSO / OIDC, RBAC, encrypted persistent audit storage. See PostgreSQL transition plan. |
+## Identity
 
----
+- `POST /api/auth/login`: local body `{ "email": "scheduler@crewcheck.local", "password": "SchedulerDemo!2026" }`; manager uses `manager@crewcheck.local` and `ManagerDemo!2026`. Configured environment passwords replace these local defaults.
+- Hosted login body: `{ "role": "scheduler" }` or `{ "role": "manager" }`.
+- Login and `GET /api/auth/me` return a **flat object** with `id`, `name`, `email`, `role`, `csrf`. Hosted identity also includes `mode` and `expires_at`.
+- `POST /api/auth/logout` returns `{ "ok": true }`. Hosted logout leaves the workspace cookie available for selecting another demo role; local logout ends that account session.
 
-## 2. Normalized Data Schemas
+## Rules and historical guarantees
 
-### 2.1 Roster Duty Record
-Source files (CSV or `.xlsx`) are parsed and normalized into standard UTC duty records.
-
-```json
-{
-  "crew_id": "C001",
-  "crew_name": "Alex Sample",
-  "role": "pilot",
-  "duty_id": "D101",
-  "duty_start": "2026-11-09T06:00:00Z",
-  "duty_end": "2026-11-09T20:00:00Z",
-  "certification_expires_at": "2026-12-01T00:00:00Z",
-  "source_row": 2
-}
-```
-
-* **Fields:**
-  * `crew_id` (string, required): Stable crew identifier.
-  * `crew_name` (string, required): Display name of crew member.
-  * `role` (string, required): Either `"pilot"` or `"cabin"`.
-  * `duty_id` (string, required): Unique identifier for the duty period.
-  * `duty_start` (string, required): ISO-8601 UTC timestamp.
-  * `duty_end` (string, required): ISO-8601 UTC timestamp strictly after `duty_start`.
-  * `certification_expires_at` (string, optional): ISO-8601 UTC timestamp. If omitted or blank, reports `CERT_MISSING` incomplete evidence.
-  * `source_row` (integer, required): 1-based row index in original file.
-
-### 2.2 Finding Schema
-Each flagged issue produces a structured finding:
+`GET /api/rules` returns the active policy. `GET /api/rules/history` is manager-only and returns an array of up to 100 versions, newest first.
 
 ```json
 {
-  "source_row": 2,
-  "crew_id": "C001",
-  "duty_id": "D101",
-  "rule_code": "DUTY_LIMIT",
-  "observed_value": "14.0h",
-  "expected_value": "<= 12.0h",
-  "evidence_timestamps": {
-    "start": "2026-11-09T06:00:00Z",
-    "end": "2026-11-09T20:00:00Z",
-    "duration_seconds": 50400
-  },
-  "classification": "violation"
+  "version": 1,
+  "name": "Illustrative MVP rules",
+  "max_duty_hours": 12,
+  "min_rest_hours": 10,
+  "certification_at": "end",
+  "created_at": "2026-11-06T12:00:00Z",
+  "created_by": "Demo setup",
+  "reason": "Initial illustrative policy"
 }
 ```
 
-* **Standard Rule Codes:**
-  * `DUTY_LIMIT`: Duty exceeds allowable hours (`duty_end - duty_start > max_duty_hours`).
-  * `REST_MIN`: Insufficient rest between consecutive duties (`0 <= next_start - latest_prior_end < min_rest_hours`).
-  * `DUTY_OVERLAP`: Overlapping duties for same crew (`next_start < latest_prior_end`).
-  * `CERT_EXPIRED`: Certification expired before assessed instant (`expiry < assessment_instant`).
-  * `CERT_MISSING`: Certification expiry is missing/blank (incomplete evidence).
+`created_by` is the local user identifier (or setup identifier), or a hosted demo display name. Timestamp formatting can differ while representing the same UTC instant.
 
----
+`POST /api/rules` is manager-only. Body: `name`, `max_duty_hours`, `min_rest_hours`, `certification_at` (`start` or `end`), `reason`, and `expected_version`. Success is **200** with the new policy. A stale version returns 409. Name length is 3–80 characters, reason 5–400, maximum duty 1–24 hours, minimum rest 1–48 hours. These are current configuration controls, not approved operational requirements.
 
-## 3. Upload-Time Rule-Version Pinning
+Uploads capture a rule version when accepted. A later rule change does not change an existing preview, even before its first check. Saved checks retain their findings and applied rules. Repeating a check returns the same result ID. UI history and results must use each record's `rules` object, never substitute the active policy.
 
-To guarantee audit integrity, rule evaluation follows strict version pinning:
-1. **Rule Versioning:** Active rule configurations are immutable and versioned (`rule_version_id`).
-2. **Upload Association:** When a roster is uploaded, the current active `rule_version_id` is stamped onto the upload record.
-3. **Execution Guarantee:** Running a check evaluates against the **stamped rule version**, even if a manager modifies system rules after upload.
-4. **Historical Immutability:** Historical check results (`runs`) store the exact findings, summary counts, and the rule version that applied. Reopening a historical run never recalculates results under current rules.
-5. **Idempotency:** Requesting `/api/uploads/{id}/check` multiple times returns the existing `run_id` without re-running or duplicating data.
+## Upload and import choices
 
----
+`POST /api/uploads` accepts multipart `file` (CSV or XLSX) and an optional JSON string field `options`:
 
-## 4. REST API Specification
+```json
+{
+  "worksheet": "Crew roster",
+  "timezone": "America/New_York",
+  "mapping": { "crew_id": "Employee ID", "crew_name": "Employee name" }
+}
+```
 
-### 4.1 Authentication & Identity
+The mapping can cover all canonical input fields. Six core fields are required: `crew_id`, `crew_name`, `role`, `duty_id`, `duty_start`, `duty_end`. `certification_expires_at` is optional; missing evidence becomes `CERT_MISSING`. Roles are `pilot` or `cabin`. Duplicate `(crew_id, duty_id)` pairs within a file and invalid required values reject the import; no partial upload is saved. Extra columns are allowed.
 
-#### `POST /api/auth/login`
-Authenticates user and issues session cookie.
-* **Request:**
-  ```json
-  {
-    "email": "scheduler@crewcheck.local",
-    "password": "SchedulerDemo!2026"
-  }
-  ```
-* **Response (200 OK):**
-  ```json
-  {
-    "id": "u_scheduler",
-    "email": "scheduler@crewcheck.local",
-    "name": "Demo Scheduler",
-    "role": "scheduler"
-  }
-  ```
+When choices are needed, 422 returns `detail`, `errors`, and `import_options` containing applicable `worksheets`, `headers`, `mapping`, `needs_mapping` or `needs_timezone` fields. Resubmit the same file with confirmed options. Explicit timestamp offsets are honored; naive timestamps/Excel dates require a confirmed source timezone. Ambiguous or nonexistent DST times require correction.
 
-#### `GET /api/auth/me`
-Fetches current session identity and CSRF token.
-* **Response (200 OK):**
-  ```json
-  {
-    "user": {
-      "id": "u_scheduler",
-      "email": "scheduler@crewcheck.local",
-      "name": "Demo Scheduler",
-      "role": "scheduler"
-    },
-    "csrf_token": "a4f89d0e2c81..."
-  }
-  ```
+Success is **201**, with `id`, `filename`, `row_count`, `crew_count`, `preview` (first 20 normalized rows), `preview_limit`, captured `rules`, and `import_settings`. A normalized row includes the seven canonical fields plus `row_number`, with `source_sheet` and `source_timezone` provenance when applicable. Dates are normalized to UTC; missing certification is empty. The preview does not truncate the saved roster.
 
----
+## Check and results
 
-### 4.2 Rules Management
+`POST /api/uploads/{id}/check` returns **200** with:
 
-#### `GET /api/rules`
-Returns active rule configuration. Available to all signed-in users.
-* **Response (200 OK):**
-  ```json
-  {
-    "version": 1,
-    "name": "Standard FAA Part 117 Baseline",
-    "max_duty_hours": 12.0,
-    "min_rest_hours": 10.0,
-    "cert_assessment": "duty_end",
-    "updated_at": "2026-11-06T12:00:00Z",
-    "updated_by": "u_manager"
-  }
-  ```
+- `id`, `created_at`, `filename`, `owner`, `file_hash` (SHA-256), `rules`, `engine_version`.
+- `rows`: all normalized duties.
+- `summary`: `duties`, `crew`, `flagged_duties`, `findings`, `no_flags`.
+- `flags`: zero or more findings per duty.
+- `coverage`: `first_duties_without_prior_rest` and a note explaining unassessed first-duty rest. Historical uploads are not merged for rest calculations.
 
-#### `POST /api/rules`
-Creates a new rule version. **Manager role required.**
-* **Headers:** `X-CSRF-Token: <token>`
-* **Request:**
-  ```json
-  {
-    "name": "Winter Operations Buffer",
-    "max_duty_hours": 11.5,
-    "min_rest_hours": 11.0,
-    "cert_assessment": "duty_end",
-    "expected_version": 1,
-    "reason": "Increased minimum rest buffer for winter conditions."
-  }
-  ```
-* **Response (201 Created):**
-  ```json
-  {
-    "version": 2,
-    "name": "Winter Operations Buffer",
-    "max_duty_hours": 11.5,
-    "min_rest_hours": 11.0,
-    "cert_assessment": "duty_end",
-    "updated_at": "2026-11-06T15:30:00Z"
-  }
-  ```
-* **Error (409 Conflict):** If `expected_version` does not match active version (stale update prevention).
+Each flag has `id`, `row_number`, `crew_id`, `duty_id`, `code`, `title`, `observed`, `expected`, `evidence`, `severity`. Severity is `review` or `incomplete`. Evidence keys depend on the check and contain the underlying timestamps, prior duty identifier, or hours above a threshold.
 
----
+| Code | Trigger |
+| --- | --- |
+| `DUTY_LIMIT` | Duty duration exceeds maximum |
+| `REST_MIN` | Nonnegative rest is below minimum |
+| `DUTY_OVERLAP` | Duty starts before the latest preceding duty ends |
+| `CERT_EXPIRED` | Certification expires before the configured assessment instant |
+| `CERT_MISSING` | Certification evidence not supplied; severity `incomplete` |
 
-### 4.3 Roster Upload & Checking
+Equality at the duty/rest/expiry boundary passes. “No flags” only covers configured checks and available evidence.
 
-#### `POST /api/uploads`
-Uploads a CSV or Excel file, parses records, validates structure, and pins the active rule version.
-* **Content-Type:** `multipart/form-data`
-* **Form Fields:**
-  * `file`: (binary file)
-  * `timezone`: `"UTC"`, `"America/New_York"`, or explicit offset (e.g., `"-05:00"`).
-  * `sheet_name`: (optional for XLSX; defaults to first worksheet).
-* **Response (201 Created):**
-  ```json
-  {
-    "upload_id": "upl_01JCA...",
-    "filename": "sample_roster.xlsx",
-    "file_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "created_at": "2026-11-06T16:00:00Z",
-    "rule_version_id": 1,
-    "total_rows": 48,
-    "preview_rows": [
-      {
-        "crew_id": "C001",
-        "crew_name": "Alex Sample",
-        "role": "pilot",
-        "duty_id": "D101",
-        "duty_start": "2026-11-09T06:00:00Z",
-        "duty_end": "2026-11-09T20:00:00Z",
-        "certification_expires_at": "2026-12-01T00:00:00Z",
-        "source_row": 2
-      }
-    ]
-  }
-  ```
-* **Error (422 Unprocessable Entity):** Invalidation on missing headers, corrupted data, or malformed timestamps.
-  ```json
-  {
-    "error": "PARSING_FAILED",
-    "message": "Row 14 contains duty_end before duty_start",
-    "source_row": 14
-  }
-  ```
+## History, audit and samples
 
-#### `POST /api/uploads/{id}/check`
-Executes deterministic compliance rules against the uploaded records using the pinned rule version.
-* **Response (200 OK):**
-  ```json
-  {
-    "run_id": "run_01JCB...",
-    "upload_id": "upl_01JCA...",
-    "created_at": "2026-11-06T16:01:00Z",
-    "rule_version_id": 1,
-    "summary": {
-      "total_duties_checked": 48,
-      "flagged_duties": 4,
-      "violations_count": 3,
-      "incomplete_count": 1
-    },
-    "findings": [
-      {
-        "source_row": 2,
-        "crew_id": "C001",
-        "duty_id": "D101",
-        "rule_code": "DUTY_LIMIT",
-        "observed_value": "14.0h",
-        "expected_value": "<= 12.0h",
-        "classification": "violation"
-      }
-    ]
-  }
-  ```
+- `GET /api/runs?q=&from_date=&to_date=&offset=0`: `{ "items": [], "total": 0, "offset": 0, "limit": 25 }`. Each item contains `id`, `created_at`, `filename`, `owner`, `summary`, and full saved `rules`. Filename search and inclusive UTC `YYYY-MM-DD` date filters apply. Scheduler ownership is enforced server-side.
+- `GET /api/runs/{id}`: full saved result; never recalculates. Inaccessible IDs return 404.
+- `GET /api/audit`: hosted manager-only, latest 100 workspace events as `items` containing `id`, `actor_role`, `action`, `target_id`, `created_at`, `details` (JSON string). Local implementation has check/rule history but no equivalent general audit endpoint.
+- `GET /api/templates/csv` and `/xlsx`: local file response; hosted redirect to the static fictional sample.
+- `GET /api/health`: health metadata (local mode or hosted database availability).
 
----
+## Errors and capacity
 
-### 4.4 History & Audit Records
+Errors use `detail`; invalid roster rows also include `errors` with `row` and `message`. Local framework validation can return an array in `detail`; the UI supports both forms. Relevant statuses: 401 session required, 403 permission/CSRF/origin, 404 absent or inaccessible record, 409 stale rules, 413 request too large, 422 invalid input/import choices, 429 local sign-in throttle, and 500/503 hosted service errors.
 
-#### `GET /api/runs`
-Lists historical runs. Schedulers see own uploads; Managers see full team history.
-* **Query Parameters:**
-  * `q`: Substring search on filename.
-  * `from_date`, `to_date`: Filter range in `YYYY-MM-DD`.
-  * `offset`, `limit`: Pagination parameters (default 25 per page).
-* **Response (200 OK):**
-  ```json
-  {
-    "total": 12,
-    "offset": 0,
-    "limit": 25,
-    "runs": [
-      {
-        "run_id": "run_01JCB...",
-        "upload_id": "upl_01JCA...",
-        "filename": "sample_roster.xlsx",
-        "uploaded_by": "Demo Scheduler",
-        "created_at": "2026-11-06T16:01:00Z",
-        "rule_version_id": 1,
-        "total_duties": 48,
-        "flagged_duties": 4
-      }
-    ]
-  }
-  ```
-
-#### `GET /api/runs/{id}`
-Retrieves complete immutable check snapshot with all findings, evidence, and rule parameters.
-* **Response (200 OK):** Returns full run object matching check result schema above.
-
----
-
-## 5. Implementation Status & Tickets
-
-| Module | Ticket | Owner | Status in CRE-5 |
-| :--- | :--- | :--- | :--- |
-| **Parsing & Rules Engine** | [CRE-6](https://linear.app/crew-roster/issue/CRE-6/implement-roster-import-and-deterministic-compliance-checks) | Shreyaa Lakshmivaragan | Contract defined; implementation deferred to CRE-6. |
-| **Backend & Storage API** | [CRE-7](https://linear.app/crew-roster/issue/CRE-7/implement-backend-persistence-and-versioned-rule-history) | Rachit Shah | Contract defined; implementation deferred to CRE-7. |
-| **Scheduler/Manager UI** | [CRE-8](https://linear.app/crew-roster/issue/CRE-8/implement-scheduler-and-manager-workflows) | Jihyung Park | Contract defined; implementation deferred to CRE-8. |
-| **Docs & Presentation** | [CRE-9](https://linear.app/crew-roster/issue/CRE-9/prepare-architecture-documentation-and-meeting-demo) | Jihyung Park | Contract defined; handover scheduled for CRE-9. |
-
+`CREWCHECK_MAX_UPLOAD_BYTES` controls the upload byte budget (default 5 MiB); multipart overhead allows another 1 MiB. There is no fixed business row ceiling. Hosted storage currently bounds serialized uploads/results to 1.5 MB, a workspace to 30 uploads (including two seeded examples), and policies to 100 versions. These are demo resource safeguards, not stakeholder requirements. Retention cleanup, durable employee identity and production capacity are future work.
