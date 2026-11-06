@@ -28,7 +28,7 @@ The suite checks CSV/XLSX equivalence, expected sample findings, timezone normal
 
 ## Verification record
 
-The local implementation passed 25 automated tests again on 5 November 2026. The earlier local checks covered JavaScript syntax, documentation links, SVG documents and static/API schema routes. Browser verification described below applies to the hosted implementation; it does not establish full browser or responsive QA for the local reference.
+On 6 November 2026 the combined team branches passed 27 Python tests, 14 hosted tests, TypeScript checks and a production build. Real Chrome exercised local and hosted upload/review, errors, historical rules, keyboard behavior and a 390 px layout. See [integration verification](integration-verification.md) for reproducible commands, sample outcomes and current evidence. The copied handbook and presentation images retain their reference provenance.
 
 ## Database lifecycle
 
@@ -59,7 +59,7 @@ Choose and implement a production identity provider, remove demo credential affo
 
 ## Hosted demo verification
 
-The web implementation passed nine additional test cases covering Python parity, CSV/XLSX equivalence, workspace isolation, role permissions, versions, audit events and API validation. TypeScript checks and the production build passed. Browser verification completed for role selection, seeded history, upload/preview/check, evidence display, role switching, audit events and a threshold-version update. The public deployment was verified through its landing page and database-backed history.
+The current team integration results are recorded in [integration verification](integration-verification.md). Hosted browser checks used the production bundle with local D1 storage. They do not establish a new public deployment or production readiness.
 
 ## Documentation and sample sources
 

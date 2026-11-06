@@ -12,7 +12,7 @@ A tool for airline crew schedulers and planning managers to validate crew duty s
 
 The system supports two deployment targets with identical compliance semantics:
 1. **Local Reference Service:** Lightweight, self-contained Python application using **FastAPI** and **SQLite** (`data/crewcheck.db`). Zero external cloud dependencies.
-2. **Hosted Web Demo:** Built with **Next.js 15**, React, Tailwind CSS, and **Cloudflare D1** (SQLite-based), running in a Cloudflare Worker runtime.
+2. **Hosted Web Demo:** Built with **Next.js 16 / Vinext**, React, Tailwind CSS, and **Cloudflare D1** (SQLite-based), running in a Cloudflare Worker runtime.
 3. **Future Production Plan:** Migration to containerized backend and managed **PostgreSQL** cluster for high-scale enterprise rollouts.
 
 For detailed request/response schemas and versioning guarantees, see [docs/api-contract.md](docs/api-contract.md).  
@@ -24,12 +24,14 @@ For contributor responsibility boundaries, see [docs/file-ownership.md](docs/fil
 
 ### Prerequisites
 * **Python:** 3.11 or newer (managed via `uv` or `venv`)
-* **Node.js:** 20.x or newer & `npm`
+* **Node.js:** 22.13 or newer & `npm`
 
 ### 1. Environment Configuration
-Copy the reference environment file:
+Review the reference environment file. The Python app reads exported environment variables; it does not load `.env` automatically:
 ```bash
-cp .env.example .env
+cat .env.example
+# Optional overrides, exported before first startup:
+# export CREWCHECK_DB=data/my-demo.db
 ```
 
 ### 2. Python Dependencies (Local Engine & API)
@@ -43,7 +45,7 @@ Or using standard `pip`:
 python3 -m pip install -e .
 ```
 
-To run local development server (once backend is linked):
+To run the local development server after the backend, UI and documentation PRs are integrated:
 ```bash
 ./scripts/run.sh
 ```
@@ -82,6 +84,28 @@ The existing CrewCheck materials are available in this repository:
 - [PostgreSQL transition plan](docs/postgresql-plan.md)
 - [Presentation sources and assets](presentation/)
 
-These materials were transferred from the [pinned reference implementation](https://github.com/jihyungparkcoforge/crewcheck/tree/cc3850ccf3d2903052ce52098e0b3f3f4639fe9b). Their screenshots, deployment links and recorded test outcomes describe that reference, not a newly verified team deployment. Final target verification depends on CRE-6, CRE-7 and CRE-8. Existing artifact-generation scripts retain their reference environment paths and need integration review before regeneration.
+The design, handbook and presentation baseline was reused from the [pinned reference](https://github.com/jihyungparkcoforge/crewcheck/tree/cc3850ccf3d2903052ce52098e0b3f3f4639fe9b). Existing public-demo links refer to that separate reference deployment. This team repository has not been deployed.
 
-The [API contract](docs/api-contract.md) and [file ownership](docs/file-ownership.md) remain maintained by Rachit. The reference UI and the current contract use different field names in several places; reconcile those interfaces before an integrated demonstration.
+The remaining backend work was completed by Jihyung at the project owner's request. CRE-7, CRE-8 and CRE-9 stay in separate PRs for peer review. Their combined checkout was verified with 27 Python tests, 14 hosted tests, TypeScript checks, a production build and real Chrome workflows. See [integration verification](docs/integration-verification.md) for scope, evidence and limitations. These results do not imply the PRs have merged.
+
+## Hosted preview on your machine
+
+From `hosted/`, with Node 22.13+:
+
+```sh
+npm ci
+node --test tests/*.test.mjs
+npx tsc --noEmit
+npm run build
+# Initialize only a new local database; do not replay against existing state.
+npx wrangler d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_absurd_doctor_strange.sql
+npm run start -- --port 8789
+```
+
+Open `http://127.0.0.1:8789`. Select Scheduler; use the same browser workspace when switching to Manager. All commands above use local D1 state. Publishing and production database changes are separate, unperformed actions.
+
+The local FastAPI application runs at `http://127.0.0.1:8000` using `./scripts/run.sh`. Select a demo account and then Sign in. Changing thresholds creates a new policy version; old previews and saved results keep their own policy.
+
+For a clean rehearsal, use a new SQLite path locally or a new private browser session for the hosted preview. No historical database needs to be deleted.
+
+See the implemented [API contract](docs/api-contract.md), [file ownership](docs/file-ownership.md), [meeting runbook](docs/meeting-demo-runbook.html), and [speaker notes](docs/speaker-notes.md). PostgreSQL, company authentication and production operations remain future work.

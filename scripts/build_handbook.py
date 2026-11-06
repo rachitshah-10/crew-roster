@@ -227,9 +227,9 @@ page('18 Decisions and handover',
  p('Meeting outcome sought: confirm the proposed workflow and identify the rulebook, data contract and internal operating requirements needed for the next implementation phase.'))
 
 # Reuse the verified presentation diagrams, with their original proportions.
-export=Path('/Users/jpark/Library/Application Support/Codex/artifact-sessions/exports/latest/bc019fd2e1ad5b775e0007bf1f99cf4dfc76cbd57d91847e128176146f3d3a84')
-for dest,num,box in [('architecture.png',2,(40,177,1240,657)),('workflow.png',3,(40,175,1240,625))]:
- if not (ASSETS/dest).exists(): Image.open(export/f'slide-{num}.png').crop(box).save(ASSETS/dest)
+for name in ['architecture.png', 'workflow.png']:
+ if not (ASSETS/name).exists():
+  raise FileNotFoundError(f'Required reviewed handbook asset missing: {ASSETS/name}')
 for name in ['upload.png','evidence-detail.png','history.png','rules-form.png']:
  (ASSETS/name).write_bytes((ROOT/'presentation'/'assets'/name).read_bytes())
 

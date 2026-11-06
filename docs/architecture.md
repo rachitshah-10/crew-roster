@@ -5,7 +5,7 @@
 
 ## Hosted web demo and planned internal rollout
 
-The public review demo is now deployed using a Cloudflare Worker and SQLite-based D1. It includes isolated visitor workspaces and an append-only audit event table. The following sections describe the retained **local FastAPI reference**, not the hosted implementation. Hosted implementation details are in `hosted/public/project-docs/architecture.md`. PostgreSQL and company authentication are planned for the internal server; see [transition plan](postgresql-plan.md).
+The separate reference public review demo is deployed using a Cloudflare Worker and SQLite-based D1. It includes isolated visitor workspaces and an append-only audit event table. The following sections describe the retained **local FastAPI reference**, not the hosted implementation. Hosted implementation details are in `hosted/public/project-docs/architecture.md`. PostgreSQL and company authentication are planned for the internal server; see [transition plan](postgresql-plan.md).
 
 ## Local reference deployment shape
 

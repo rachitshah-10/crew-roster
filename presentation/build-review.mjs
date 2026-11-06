@@ -1,6 +1,7 @@
 import {drawArchitecture} from './architecture.mjs';
 import {drawWorkflow,drawHistory,drawThresholds} from './sequences.mjs';
-const ROOT='/Users/jpark/Documents/09_coforge/projects/compliance_checker';
+import {fileURLToPath} from 'node:url';
+const ROOT=fileURLToPath(new URL('../',import.meta.url)).replace(/\/$/,'');
 const C={navy:'#142C43',blue:'#315F78',muted:'#536679',light:'#EDF3F6',white:'#FFFFFF',border:'#C3D0D9',amber:'#8A611D'};
 function text(s,value,x,y,w,h,size=24,color=C.navy,bold=false){const t=s.shapes.add({geometry:'textbox',name:value.slice(0,48),position:{left:x,top:y,width:w,height:h},fill:'none',line:{fill:'none',width:0}});t.text=value;t.text.insets=0;t.text.style={fontFamily:'Arial',fontSize:size,color,bold};return t;}
 function base(p,title,no,section){const s=p.slides.add({width:1280,height:720});s.background.fill=C.white;text(s,section,64,45,1100,25,18,C.blue,true);text(s,title,64,91,1152,66,40,C.navy,true);text(s,'CrewCheck  /  MVP design review',64,674,1000,23,15,C.muted);text(s,String(no).padStart(2,'0'),1168,674,48,23,15,C.muted);return s;}
