@@ -1,0 +1,16 @@
+{
+  "worksheet": "Crew duties",
+  "mapping": {
+    "crew_id": "Employee",
+    "crew_name": "Full name",
+    "role": "Role",
+    "duty_id": "Duty",
+    "duty_start": "Start",
+    "duty_end": "End",
+    "certification_expires_at": "Expiry"
+  },
+  "timezone": "America/New_York",
+  "normalizedStart": "2026-11-09T11:00:00Z",
+  "largeRosterDuties": 601,
+  "audit": "verified"
+}
