@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project specific ignores
+.venv/
+data/*
+!data/.gitkeep
+artifacts/
+.DS_Store
+node_modules/
+outputs/
+.agents/mcp_config.json

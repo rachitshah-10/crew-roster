@@ -1,0 +1,6 @@
+{
+  "name": "crewcheck-diagrams",
+  "private": true,
+  "scripts": { "diagrams:user-flow": "node scripts/render_user_flow.mjs" },
+  "devDependencies": { "@mermaid-js/mermaid-cli": "11.12.0" }
+}
