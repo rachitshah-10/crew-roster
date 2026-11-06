@@ -250,5 +250,6 @@ def create_app(db_path=None):
     def documentation(): return RedirectResponse("/project-docs/index.html")
 
     app.mount("/static", StaticFiles(directory=ROOT / "app/static", check_dir=False), name="static")
+    app.mount("/samples", StaticFiles(directory=ROOT / "samples"), name="samples")
     app.mount("/project-docs", StaticFiles(directory=ROOT / "docs"), name="project-docs")
     return app
