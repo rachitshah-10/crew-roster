@@ -1,0 +1,30 @@
+{
+  "title": "CrewCheck | MVP Design Review",
+  "page_id": "page_348bad464cb08191b7a40b669d642fca",
+  "artifact_ref": "artifact_external_cba993cc-ed8a-487e-8ab0-2064532e3254",
+  "slides": 9,
+  "language": "English",
+  "contents": [
+    "Cover",
+    "System architecture",
+    "Proposed user workflow",
+    "Roster upload and validation",
+    "Violation display",
+    "Evidence behind a flag",
+    "Historical flags and audit evidence",
+    "Threshold configuration",
+    "Outstanding risks and decisions"
+  ],
+  "demo_url": "https://crewcheck-roster-demo.swoonypopcorn.chatgpt.site",
+  "created_at": "2026-11-05",
+  "source": "build-review.mjs",
+  "workflow_mermaid": "user-flow.mmd",
+  "architecture_source": "architecture.mjs",
+  "architecture_mermaid": "system-architecture.mmd",
+  "sequence_source": "sequences.mjs",
+  "history_mermaid": "history-sequence.mmd",
+  "threshold_mermaid": "threshold-sequence.mmd",
+  "updated_at": "2026-11-06",
+  "editorial_revision": "Removed diagram-source paths and production notes from speaker notes on slides 3, 6, 7 and 8.",
+  "import_revision": "Slide 4 screenshot and notes updated for flexible import on 6 November 2026."
+}

@@ -1,0 +1,13 @@
+sequenceDiagram
+    actor Manager as User (Planning Manager)
+    participant Application
+    participant Database
+    Manager->>Application: Submit values and reason
+    Application->>Application: Validate role, values and current version
+    alt Invalid values or version conflict
+        Application-->>Manager: Return error without publishing
+    else Valid change
+        Application->>Database: Save new version and audit event atomically
+        Database-->>Application: New rule version
+        Application-->>Manager: Confirm saved version
+    end

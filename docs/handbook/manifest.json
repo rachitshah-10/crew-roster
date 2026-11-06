@@ -1,0 +1,25 @@
+{
+  "title": "CrewCheck project handbook",
+  "document_version": "1.4",
+  "date": "2026-11-06",
+  "pages": 18,
+  "public_source_commit": "026df3eebc495f766553049db4ff82d95c6e998c",
+  "verification": {
+    "local_tests": 27,
+    "hosted_tests": 14,
+    "typescript": "passed",
+    "production_build": "passed",
+    "visual_review": "All 18 pages rendered and reviewed; updated input contract and API table inspected at full resolution. Updated upload slide rendered and reviewed."
+  },
+  "artifacts": {
+    "crewcheck-project-handbook.pdf": {
+      "bytes": 628610,
+      "sha256": "57d6d564a4d9d3cb780d2b5b669241931afc8bce08d282a70392128252e61950"
+    },
+    "crewcheck-project-handbook.docx": {
+      "bytes": 503468,
+      "sha256": "dbee7a8b5e03b1d204ce95baccfac75f4526a8f123d278b9271cbf5bdb6b6a62"
+    }
+  },
+  "revision_note": "Flexible worksheet selection, column mapping, Excel dates and explicit source timezone; fixed roster-row ceilings removed."
+}

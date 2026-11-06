@@ -1,0 +1,12 @@
+sequenceDiagram
+    actor Manager as User (Planning Manager)
+    participant Application
+    participant Database
+    Manager->>Application: Request history
+    Application->>Database: Find saved checks within workspace
+    Database-->>Application: Check summaries
+    Application-->>Manager: Browse results
+    Manager->>Application: Open saved check
+    Application->>Database: Load original result
+    Database-->>Application: Captured rules and findings
+    Application-->>Manager: Review original evidence

@@ -1,0 +1,21 @@
+sequenceDiagram
+    actor Scheduler as User (Crew Scheduler)
+    participant WebApp as Web app
+    participant Backend
+    participant Database
+    Scheduler->>WebApp: Upload CSV or Excel
+    WebApp->>Backend: Validate file and rows
+    break Invalid file
+        Backend-->>WebApp: Validation errors
+        WebApp-->>Scheduler: Correct the source and re-upload
+    end
+    Backend->>Database: Save preview and captured rule version
+    Backend-->>WebApp: Validated preview
+    WebApp-->>Scheduler: Review roster and rules
+    Scheduler->>WebApp: Run check
+    WebApp->>Backend: Check saved preview
+    Backend->>Database: Load roster and captured rules
+    Backend->>Backend: Apply captured rules
+    Backend->>Database: Save result and audit event
+    Backend-->>WebApp: Saved findings
+    WebApp-->>Scheduler: Review flags and evidence
