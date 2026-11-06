@@ -1,6 +1,6 @@
-# User flow
+# User workflow sequence
 
-![User flow](diagrams/user-flow.svg)
+![User workflow sequence](diagrams/user-flow.svg)
 
 ## Entry
 
