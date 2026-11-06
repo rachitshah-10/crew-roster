@@ -1,0 +1,3 @@
+crew_id,crew_name,role,duty_id,duty_start,duty_end,certification_expires_at
+DEMO-001,Avery Sample,pilot,DEMO-D101,2026-11-16T06:00:00,2026-11-16T14:00:00Z,2027-05-01T00:00:00Z
+DEMO-002,Blake Sample,pilot,DEMO-D102,2026-11-16T07:00:00Z,2026-11-16T07:00:00Z,2027-05-01T00:00:00Z

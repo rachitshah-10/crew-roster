@@ -1,0 +1,90 @@
+{
+  "fictional": true,
+  "rules": {
+    "max_duty_hours": 12,
+    "min_rest_hours": 10,
+    "certification_at": "end"
+  },
+  "cases": [
+    {
+      "name": "01_multiple_violations",
+      "description": "Three independent findings on one duty",
+      "expected": {
+        "duties": 2,
+        "flagged_duties": 1,
+        "findings": 3,
+        "codes": [
+          "DUTY_LIMIT",
+          "CERT_EXPIRED",
+          "REST_MIN"
+        ],
+        "duty": "EDGE-D02",
+        "evidence": "14 h duty, 7 h rest, expiry 12:00 before duty end 17:00 UTC"
+      }
+    },
+    {
+      "name": "02_missing_required",
+      "description": "Missing crew name and missing duty start on separate rows",
+      "expected": {
+        "rejected": true,
+        "errors": [
+          {
+            "row": 2,
+            "message": "crew_name is required."
+          },
+          {
+            "row": 3,
+            "message": "duty_start is required."
+          }
+        ]
+      }
+    },
+    {
+      "name": "03_missing_certification",
+      "description": "Valid input with missing certification evidence",
+      "expected": {
+        "duties": 2,
+        "flagged_duties": 1,
+        "findings": 1,
+        "codes": [
+          "CERT_MISSING"
+        ],
+        "severity": "incomplete",
+        "duty": "EDGE-D02"
+      }
+    },
+    {
+      "name": "04_duplicate_records",
+      "description": "Same crew_id and duty_id repeated within a file",
+      "expected": {
+        "rejected": true,
+        "errors": [
+          {
+            "row": 4,
+            "message": "Duplicate crew_id and duty_id in this file."
+          }
+        ]
+      }
+    },
+    {
+      "name": "05_corrected_roster",
+      "description": "Corrected common baseline for re-upload after an error",
+      "expected": {
+        "duties": 2,
+        "flagged_duties": 0,
+        "findings": 0,
+        "codes": []
+      }
+    },
+    {
+      "name": "06_exact_boundaries",
+      "description": "Exactly 12 h duty, 10 h rest and certification valid through end",
+      "expected": {
+        "duties": 2,
+        "flagged_duties": 0,
+        "findings": 0,
+        "codes": []
+      }
+    }
+  ]
+}

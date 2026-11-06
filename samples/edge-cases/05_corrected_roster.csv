@@ -1,0 +1,3 @@
+"crew_id","crew_name","role","duty_id","duty_start","duty_end","certification_expires_at"
+"EDGE-001","Taylor Fictional","pilot","EDGE-D01","2026-11-08T12:00:00Z","2026-11-08T20:00:00Z","2027-05-01T00:00:00Z"
+"EDGE-001","Taylor Fictional","pilot","EDGE-D02","2026-11-09T06:00:00Z","2026-11-09T14:00:00Z","2027-05-01T00:00:00Z"

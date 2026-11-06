@@ -1,0 +1,2 @@
+crew_id,crew_name,role,duty_id,duty_start,duty_end,certification_expires_at
+C001,Alex Sample,pilot,D101,2026-11-09T06:00:00,2026-11-09T20:00:00Z,2027-01-01T00:00:00Z
