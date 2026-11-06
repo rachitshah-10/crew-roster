@@ -1,0 +1,30 @@
+flowchart TD
+    accTitle: CrewCheck user flow
+    accDescr: Both roles upload and review rosters. Schedulers see their own history; managers see all history and configure future rule versions. Invalid files return for correction.
+
+    signIn(["Sign in"]) --> workspace["Role-based workspace"]
+    workspace --> upload["Upload CSV or Excel"]
+    workspace --> history["Browse check history"]
+    workspace -->|"Manager only"| settings["Edit thresholds + reason"]
+
+    upload --> valid{"File valid?"}
+    valid -->|"No"| correct["Correct reported row errors"]
+    correct --> upload
+    valid -->|"Yes"| preview["Preview roster + rule version"]
+    preview --> run["Run roster check"]
+    run --> saved["Save result + evidence"]
+    saved --> review["Review flags + evidence"]
+    history -->|"Open saved check"| review
+    review --> decision(["Human decides next action"])
+
+    settings --> version["Save new rule version"]
+    version --> future["Apply to future uploads"]
+
+    classDef entry fill:#142a43,stroke:#142a43,color:#ffffff
+    classDef reviewStep fill:#edf2ff,stroke:#9db4ee,color:#142a43
+    classDef attention fill:#fff6e8,stroke:#d8ad64,color:#72521c
+    classDef management fill:#f2f5fa,stroke:#a7b8cf,color:#142a43
+    class signIn,decision entry
+    class preview,run,saved,review reviewStep
+    class valid,correct attention
+    class history,settings,version,future management
