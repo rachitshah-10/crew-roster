@@ -1,0 +1,17 @@
+flowchart LR
+    browser["Browser UI: Scheduler or Manager"]
+    subgraph backend["Backend: one Cloudflare Worker"]
+        access["Access control: workspace, role, CSRF and origin"]
+        api["API handlers: upload, checks, history, rules and audit"]
+        parser["File validation: CSV/XLSX schema and UTC normalization"]
+        checker["Deterministic engine: duty, rest, overlap and certification"]
+        storage["Persistence helpers: snapshots, versions and audit transactions"]
+        access --> api
+        api -->|"Validate upload"| parser
+        api -->|"Run saved preview"| checker
+        api -->|"Read and write records"| storage
+    end
+    database[("Cloudflare D1: SQLite-based persistent storage")]
+    browser -->|"Same-origin HTTPS"| access
+    storage --> database
+    style backend fill:#ffffff,stroke:#315f78,stroke-width:2px,stroke-dasharray:6 5
