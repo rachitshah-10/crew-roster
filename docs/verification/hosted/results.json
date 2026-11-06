@@ -1,0 +1,62 @@
+{
+  "base": "http://127.0.0.1:8789",
+  "mode": "hosted",
+  "checks": [
+    {
+      "file": "samples/clean_roster.csv",
+      "findings": 0
+    },
+    {
+      "file": "samples/review_roster.xlsx",
+      "findings": 6
+    },
+    {
+      "case": "01_multiple_violations",
+      "findings": 3
+    },
+    {
+      "case": "02_missing_required",
+      "rejected": true,
+      "errors": [
+        {
+          "row": 2,
+          "message": "crew_name is required."
+        },
+        {
+          "row": 3,
+          "message": "duty_start is required."
+        }
+      ]
+    },
+    {
+      "case": "03_missing_certification",
+      "findings": 1
+    },
+    {
+      "case": "04_duplicate_records",
+      "rejected": true,
+      "errors": [
+        {
+          "row": 4,
+          "message": "Duplicate crew_id and duty_id in this file."
+        }
+      ]
+    },
+    {
+      "case": "05_corrected_roster",
+      "findings": 0
+    },
+    {
+      "case": "06_exact_boundaries",
+      "findings": 0
+    },
+    {
+      "historicalRule": 1,
+      "newRule": 2,
+      "unchangedSavedResult": true
+    }
+  ],
+  "keyboard": "Enter opens, Tab stays in dialog, Escape returns focus",
+  "viewport": 390,
+  "pageErrors": []
+}
