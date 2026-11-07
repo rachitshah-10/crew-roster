@@ -1,7 +1,7 @@
 # Crew Roster Compliance Checker
 
 > **Team 5:** Rachit Shah (Lead), Shreyaa Lakshmivaragan, Jihyung Park  
-> **Client:** Shubh Rakesh (`Shubh.Nahar@coforge.com`)  
+> **Client:** Shubh Rakesh 
 > **Course / Instructor:** Adam
 
 A tool for airline crew schedulers and planning managers to validate crew duty schedules against duty length limits, mandatory minimum rest intervals, and certification validity before publication.
