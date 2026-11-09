@@ -59,7 +59,7 @@ Choose and implement a production identity provider, remove demo credential affo
 
 ## Hosted demo verification
 
-The current team integration results are recorded in [integration verification](integration-verification.md). Hosted browser checks used the production bundle with local D1 storage. They do not establish a new public deployment or production readiness.
+The initial team integration results are recorded in [integration verification](integration-verification.md). Hosted browser checks used the production bundle with local D1 storage. They do not establish a new public deployment or production readiness.
 
 ## Documentation and sample sources
 
@@ -69,6 +69,6 @@ The architecture and role workflow diagram sources are in `docs/diagrams/`. The 
 
 These settings protect the deployment and are not roster requirements. There is no hard-coded count of duties or physical rows. `CREWCHECK_MAX_UPLOAD_BYTES` controls the file-byte budget (current default 5 MiB); the request envelope allows a further 1 MiB. Set it in the local process environment or hosted runtime configuration, then validate memory use and representative files before increasing it.
 
-The current XLSX reader bounds archive entries at 1,000 and declared expansion at 30 MiB, and reads up to 32 source columns. Normalized field values are bounded at 160 characters. The hosted snapshot model guards each normalized upload and result at 1.5 MB before saving. These remaining implementation budgets can require streaming, chunked storage or an internal-server deployment for larger workloads; removing the old row limit does not establish unlimited capacity. Existing public workspace quotas remain 30 accepted uploads and 100 rule versions.
+The current XLSX reader bounds archive entries at 1,000 and declared expansion at 30 MiB, and reads up to 32 source columns. Normalized field values are bounded at 160 characters. The hosted snapshot model guards each normalized upload and result at 1.5 MB before saving. These remaining implementation budgets can require streaming, chunked storage or an internal-server deployment for larger workloads; removing the old row limit does not establish unlimited capacity. The previous 30-upload and 100-rule-version lifetime quotas no longer apply to the shared team.
 
 Import requests may include JSON in multipart `options`: `worksheet`, `timezone` and `mapping` (canonical field to source header). A 422 response with `import_options` asks for missing interpretation choices and saves no upload. Successful previews return `import_settings`. Hosted audit entries retain the choices, and normalized rows retain the selected source sheet/time zone.

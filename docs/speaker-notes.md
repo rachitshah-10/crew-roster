@@ -4,7 +4,7 @@
 
 “The scheduler uploads a CSV or Excel roster, confirms any import choices, reviews a preview, and runs the checks. The backend validates and normalizes the data, applies deterministic rules, and saves the result with its policy version. No LLM is needed for these comparisons.”
 
-“For this review, the hosted application runs as a Cloudflare Worker with local D1 storage. The separate local application uses FastAPI and SQLite. PostgreSQL and company authentication are planned for internal deployment.”
+“For this review, the hosted application runs as a Cloudflare Worker with persistent D1 storage. The separate local application uses FastAPI and SQLite. PostgreSQL and company authentication are planned for internal deployment.”
 
 ## Interface decisions
 
@@ -25,11 +25,11 @@
 3. Upload `01_multiple_violations.csv`; open EDGE-D02: three findings on one duty.
 4. Show missing required fields and duplicates, then corrected re-upload. Contrast missing certification with rejected input.
 5. Use `review_roster.xlsx` for Excel support; use the flexible-import workbook if time permits.
-6. Switch to Manager in the same hosted browser workspace. Open history and audit events, create a rule version, and reopen the original result.
+6. Open Manager in a second browser or computer. Open history and audit events, create a rule version, and reopen the original result.
 7. Close with current limitations and the business decisions still needed.
 
 ## Limits to state clearly
 
 “These defaults demonstrate the workflow; they are not a complete aviation rulebook. First-duty rest cannot be assessed without preceding duties in the uploaded file, and historical uploads are not combined. The tool flags issues but does not edit schedules or track remediation.”
 
-“Hosted role selection is for a fictional-data demo. It is not employee authentication. We have verified the integrated branches locally; this team build has not yet been merged or deployed.”
+“Hosted role selection is for a fictional-data demo. It is not employee authentication. The scheduler and manager share the same saved history and rules across computers. Each browser keeps its own role session.”

@@ -4,7 +4,7 @@
 
 ## Entry
 
-Choose a demo role without account registration. A first visit creates a private-to-this-browser sandbox with two fictional saved checks. Returning with the same cookie reopens it until access expires. Switching roles keeps that sandbox.
+Choose Scheduler or Manager without account registration. All browsers join the same team workspace. Two fictional checks are seeded once for the team. Each browser has its own role session; switching roles or signing out does not change another browser’s session.
 
 ## Scheduler
 
@@ -14,7 +14,7 @@ Open own saved checks, upload CSV/XLSX, correct reported input errors, preview r
 
 ## Manager
 
-All scheduler actions plus all history in the same visitor sandbox, rule-version history, threshold changes with a reason, and audit events. Other visitors' workspaces are never visible.
+All scheduler actions plus shared team history, rule-version history, threshold changes with a reason, and audit events. A manager on another computer can open the scheduler’s saved checks.
 
 ## Human follow-up
 

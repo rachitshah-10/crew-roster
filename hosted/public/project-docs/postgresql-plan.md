@@ -5,7 +5,7 @@
 | Environment | Application | Storage | Identity |
 |---|---|---|---|
 | Local reference MVP | FastAPI / Python | SQLite file | Local demo accounts |
-| Public review demo | Cloudflare Worker / JavaScript | Cloudflare D1, based on SQLite | Isolated browser workspace with selectable demo roles |
+| Public review demo | Cloudflare Worker / JavaScript | Cloudflare D1, based on SQLite | Shared team workspace with separate role sessions |
 | Planned internal deployment | Internal application server | PostgreSQL | Company authentication and assigned roles |
 
 PostgreSQL migration is **planned, not implemented or deployed**. The review demo uses a hosting-compatible backend; the local Python reference remains available. Golden synthetic fixtures verify that both deterministic checkers produce the same findings. Cloudflare-specific D1 access stays in the hosted API module, outside the pure checker.
@@ -14,7 +14,7 @@ PostgreSQL migration is **planned, not implemented or deployed**. The review dem
 
 The hosted demo persists upload records, original file hashes, result snapshots, the rule version used, and append-only action events. Events contain an ID, workspace, actor role, action, target, timestamp and contextual details. Upload/check/configuration mutations and their audit entries are committed together. Repeating a check returns its original snapshot without duplicating the execution event.
 
-Demo roles are not verified employee identities. Browser workspaces are isolated; manager access is limited to that visitor's workspace. Workspace access expires after seven days. This is an access lifetime, not a promise of automatic data erasure. Retention and deletion operations still need to be defined for internal use. Database administrators can alter storage; application append-only behavior is not tamper-proof audit storage.
+Demo roles are not verified employee identities. All browsers share team records; managers can view scheduler uploads across devices. Each browser session expires after seven days, independently of stored data. This is an access lifetime, not a promise of automatic data erasure. Retention and deletion operations still need to be defined for internal use. Database administrators can alter storage; application append-only behavior is not tamper-proof audit storage.
 
 ## Planned PostgreSQL migration
 

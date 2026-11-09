@@ -6,25 +6,26 @@ The public demo serves the same roster review workflow through a Cloudflare Work
 
 ## Request path
 
-Browser → same-origin API → visitor workspace and role checks → bounded CSV/XLSX parsing → normalized UTC rows → explicit deterministic checks → immutable result and audit event → browser evidence view.
+Browser → same-origin API → browser session and role checks for the shared team → bounded CSV/XLSX parsing → normalized UTC rows → explicit deterministic checks → immutable result and audit event → browser evidence view.
 
 No LLM or airline integration is used. Original file bytes are discarded after parsing; normalized rows and source SHA-256 are retained. Each upload captures a rule version. That version remains fixed even if a manager edits thresholds before Run. Repeating Run for one upload returns the existing result.
 
 ## Persistent data
 
-- `demo_workspaces`: hashed random browser capability, expiry, selected demo role and CSRF token.
+- `demo_workspaces`: the shared team and active rule version; legacy private workspace rows remain preserved.
+- `demo_sessions`: hashed browser token, selected role, CSRF token and seven-day expiry, separate from shared data.
 - `demo_rule_versions`: immutable settings, version, change reason and demo actor.
 - `demo_uploads`: normalized rows, owner role, source hash and captured rules.
 - `demo_runs`: immutable result snapshot and source upload, unique per upload.
 - `demo_audit_events`: actor, action, timestamp, target and details.
 
-Database mutations and their corresponding audit event use a transaction/batch. Rule updates use an optimistic expected-version condition. Historical results are never recalculated by a later configuration change. Every read is scoped to a visitor workspace; schedulers additionally see only scheduler-owned uploads/runs. Managers can inspect all records in their own demo workspace.
+Database mutations and their corresponding audit event use a transaction/batch. Rule updates use an optimistic expected-version condition. Historical results are never recalculated by a later configuration change. Every read is scoped to the shared team; schedulers additionally see only scheduler-owned uploads/runs. Managers can inspect all team records across browsers and computers.
 
 ## Demo access boundary
 
-Anyone with the link can enter a **new isolated sandbox**. Choosing a role demonstrates permissions; it does not authenticate a real employee. An HttpOnly, Secure-on-HTTPS, SameSite cookie is the capability for that browser's workspace. Only its hash is persisted. Mutation APIs verify the workspace, role, CSRF token and request origin. Leaving a role retains the workspace so a reviewer can switch from Scheduler to Manager. A different browser/device starts a separate workspace.
+Anyone with the link can select a demo role in **one shared team workspace**. This does not authenticate a real employee. An HttpOnly, Secure-on-HTTPS, SameSite cookie identifies only the browser session. Its hash, role and CSRF token are stored in `demo_sessions`. Mutation APIs verify the session, role, CSRF token and request origin. Logging out or changing roles affects only that session. Different browsers and computers see the same shared records, subject to scheduler/manager permissions.
 
-Access lasts seven days; automatic record erasure is not implemented. There is no fixed duty-row limit. Upload and storage budgets are deployment settings; workspace and rule-version quotas remain documented in Development and operations. Use fictional data only. These are demo limits, not supported production capacity claims.
+Browser sessions last seven days; shared records do not expire with a session. Automatic record erasure is not implemented. There is no fixed duty-row limit. Upload and storage budgets are deployment settings; the old per-workspace lifetime upload/version quotas no longer apply. Use fictional data only. These are demo limits, not supported production capacity claims.
 
 ## API
 

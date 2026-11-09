@@ -75,4 +75,4 @@ Research was checked during the presentation work on 4 November 2026. Verify the
 
 ## Public review deployment
 
-The hosted review demo uses SQLite-based D1 and isolated browser workspaces. Roles are selectable demo profiles, not employee identities. PostgreSQL migration, company authentication, retention/backup procedures and verified actor audit IDs are planned for an internal-server rollout, not implemented. See `postgresql-plan.md`.
+The hosted review demo uses SQLite-based D1 and a shared team workspace with independent browser sessions. Roles are selectable demo profiles, not employee identities. PostgreSQL migration, company authentication, retention/backup procedures and verified actor audit IDs are planned for an internal-server rollout, not implemented. See `postgresql-plan.md`.

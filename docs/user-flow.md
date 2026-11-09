@@ -1,6 +1,6 @@
 # User workflow sequence
 
-This page and its sequence diagram describe the **local account-based reference**. The public web demo starts a Scheduler directly at upload after role selection; its Manager sees all records only in the same browser workspace. Demo ownership is by role within that workspace, not employee identity. The current meeting walkthrough is in sections 4–8 of the [project handbook](handbook/crewcheck-project-handbook.pdf).
+This page and its sequence diagram describe the **local account-based reference**. The public web demo starts a Scheduler directly at upload after role selection; its Manager sees shared team records from any browser or computer. Demo ownership is by the shared scheduler/manager role, not employee identity. The current meeting walkthrough is in sections 4–8 of the [project handbook](handbook/crewcheck-project-handbook.pdf).
 
 ![User workflow sequence](diagrams/user-flow.svg)
 
