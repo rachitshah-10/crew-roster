@@ -27,7 +27,7 @@ Under the initial 12 h / 10 h / valid-through-end policy:
 | D103, Jordan Sample | Insufficient rest | D102 ends 23:00; D103 starts 06:00 next day = 7 h, below 10 h |
 | D104, Morgan Sample | Certification expires too early | Expiry 12:00, duty ends 16:00 |
 
-Expected: **6 duties, 4 crew, 3 flagged duties, 3 findings**. Four first duties lack preceding-rest context. Demonstrate this coverage message rather than implying they are all compliant.
+Expected: **6 duties, 4 crew, 3 flagged duties, 3 findings**. Four first duties lack preceding-rest context; cover this limitation in the closing discussion.
 
 ## 3. How violations are displayed (1 minute)
 
