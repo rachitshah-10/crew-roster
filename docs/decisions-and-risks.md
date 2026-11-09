@@ -25,7 +25,7 @@ The consolidated current review baseline is the [project handbook](handbook/crew
 - Scheduler can upload and review own results. Manager can inspect all history and configure thresholds. Confirmed by the project owner on 5 November 2026.
 - Only CSV and Excel input. PDF and DOCX are not an extension goal in this scope.
 - Synthetic data only; no roster edits, crew removal or outbound messages.
-- Local source delivery plus a publicly accessible fictional-data web demo, authorized by the project owner. Hosted visitors receive isolated browser workspaces.
+- Local source delivery plus a publicly accessible fictional-data web demo, authorized by the project owner. Hosted visitors receive a shared team workspace with independent browser sessions.
 
 ## Explicit implementation assumptions
 

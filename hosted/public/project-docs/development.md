@@ -6,9 +6,9 @@ Source is in the project's `hosted/` directory. The local FastAPI reference rema
 
 Use Node 22.13+ (an active LTS release is preferred), install the lockfile with `npm ci`, run `node --test tests/*.test.mjs`, `npx tsc --noEmit` and `npm run build`. Use the Sites project helpers for hosted publication. The local source database and hosted D1 database are separate; local test data is never uploaded with source.
 
-Tests cover parity with Python, CSV/XLSX equivalence, invalid input, exact rule boundaries, nested overlap, isolated visitor workspaces, scheduler vs manager access, stale rule edits, captured versions, idempotent checks, audit events, CSRF and origin rejection.
+Tests cover parity with Python, CSV/XLSX equivalence, invalid input, exact rule boundaries, nested overlap, shared team history and independent browser sessions, scheduler vs manager access, stale rule edits, captured versions, idempotent checks, audit events, CSRF and origin rejection.
 
-The D1 migration is under `drizzle/`. Never modify applied migration history; create a new migration. Sites applies production schema changes before deploying the Worker. Seed data is created during isolated workspace initialization, not in a schema migration.
+The D1 migration is under `drizzle/`. Never modify applied migration history; create a new migration. Sites applies production schema changes before deploying the Worker. Seed data is created during one-time shared team initialization, not in a schema migration.
 
 ## Operations boundaries
 
@@ -20,6 +20,6 @@ See [PostgreSQL transition plan](postgresql-plan.md) before an internal-server d
 
 These settings protect the deployment and are not roster requirements. There is no hard-coded count of duties or physical rows. `CREWCHECK_MAX_UPLOAD_BYTES` controls the file-byte budget (current default 5 MiB); the request envelope allows a further 1 MiB. Set it in the local process environment or hosted runtime configuration, then validate memory use and representative files before increasing it.
 
-The current XLSX reader bounds archive entries at 1,000 and declared expansion at 30 MiB, and reads up to 32 source columns. Normalized field values are bounded at 160 characters. The hosted snapshot model guards each normalized upload and result at 1.5 MB before saving. These remaining implementation budgets can require streaming, chunked storage or an internal-server deployment for larger workloads; removing the old row limit does not establish unlimited capacity. Existing public workspace quotas remain 30 accepted uploads and 100 rule versions.
+The current XLSX reader bounds archive entries at 1,000 and declared expansion at 30 MiB, and reads up to 32 source columns. Normalized field values are bounded at 160 characters. The hosted snapshot model guards each normalized upload and result at 1.5 MB before saving. These remaining implementation budgets can require streaming, chunked storage or an internal-server deployment for larger workloads; removing the old row limit does not establish unlimited capacity. The previous 30-upload and 100-rule-version lifetime quotas no longer apply to the shared team.
 
 Import requests may include JSON in multipart `options`: `worksheet`, `timezone` and `mapping` (canonical field to source header). A 422 response with `import_options` asks for missing interpretation choices and saves no upload. Successful previews return `import_settings`. Hosted audit entries retain the choices, and normalized rows retain the selected source sheet/time zone.
