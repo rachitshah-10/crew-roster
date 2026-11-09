@@ -15,3 +15,9 @@ export const runs = sqliteTable('demo_runs', {
 export const audit = sqliteTable('demo_audit_events', {
  id: text('id').primaryKey(), workspaceId: text('workspace_id').notNull(), actorRole: text('actor_role').notNull(), action: text('action').notNull(), targetId: text('target_id').notNull(), createdAt: text('created_at').notNull(), details: text('details').notNull(),
 },t=>[index('audit_workspace_idx').on(t.workspaceId,t.createdAt)]);
+
+// Access tokens are browser-specific; records remain in the shared team workspace.
+export const sessions = sqliteTable('demo_sessions', {
+ id: text('id').primaryKey(), tokenHash: text('token_hash').notNull(), workspaceId: text('workspace_id').notNull(),
+ role: text('role').notNull(), csrf: text('csrf').notNull(), createdAt: text('created_at').notNull(), expiresAt: text('expires_at').notNull(),
+},t=>[uniqueIndex('session_token_idx').on(t.tokenHash),index('session_expiry_idx').on(t.expiresAt)]);

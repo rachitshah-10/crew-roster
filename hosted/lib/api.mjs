@@ -1,7 +1,7 @@
 import fixtures from './demo-fixtures.json' with {type:'json'};
 import {DEFAULT_RULES,checkRoster,RosterError,MAX_BYTES} from './checker.mjs';
 import {parseUpload} from './parse-upload.mjs';
-const COOKIE='crewcheck_demo',DAYS=7,MAX_UPLOADS=30;
+const COOKIE='crewcheck_demo',DAYS=7,SHARED_WORKSPACE='crewcheck-shared-team';
 const id=()=>crypto.randomUUID().replaceAll('-','').slice(0,24);
 const token=()=>crypto.randomUUID()+crypto.randomUUID();
 const now=()=>new Date().toISOString();
@@ -14,26 +14,36 @@ const sql=(db,query,...args)=>db.prepare(query).bind(...args);
 const first=(db,q,...args)=>sql(db,q,...args).first();
 const all=async(db,q,...args)=>(await sql(db,q,...args).all()).results;
 const cookieValue=request=>(request.headers.get('cookie')||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE+'='))?.slice(COOKIE.length+1)||'';
-const identity=w=>({id:w.id+':'+w.role,name:names[w.role],email:w.role+'@crewcheck.demo',role:w.role,csrf:w.csrf,mode:'isolated-demo',expires_at:w.expires_at});
+const identity=w=>({id:w.id+':'+w.role,name:names[w.role],email:w.role+'@crewcheck.demo',role:w.role,csrf:w.csrf,mode:'shared-demo',expires_at:w.expires_at});
 const audit=(db,w,action,target,details={})=>sql(db,'INSERT INTO demo_audit_events VALUES (?,?,?,?,?,?,?)',id(),w.id,w.role||'visitor',action,target,now(),JSON.stringify(details));
 async function readBody(request,limit){
  const reader=request.body?.getReader();if(!reader)return new Uint8Array();const chunks=[];let total=0;
  while(true){const {value,done}=await reader.read();if(done)break;total+=value.length;if(total>limit){await reader.cancel();error(413,'Request is too large.')}chunks.push(value)}
  const bytes=new Uint8Array(total);let p=0;for(const chunk of chunks){bytes.set(chunk,p);p+=chunk.length}return bytes;
 }
-async function getWorkspace(db,request){const value=cookieValue(request);if(!value||value.length>200)return null;return first(db,'SELECT * FROM demo_workspaces WHERE token_hash=? AND expires_at>?',await hash(value),now())}
+// Browser sessions select a role; all records and policies belong to one team.
+async function getWorkspace(db,request){
+ const value=cookieValue(request);if(!value||value.length>200)return null;
+ return first(db,'SELECT w.id,w.active_version,s.id AS session_id,s.role,s.csrf,s.expires_at FROM demo_sessions s JOIN demo_workspaces w ON w.id=s.workspace_id WHERE s.token_hash=? AND s.expires_at>? AND w.id=?',await hash(value),now(),SHARED_WORKSPACE);
+}
 async function getRule(db,w,version=w.active_version){const r=await first(db,'SELECT data FROM demo_rule_versions WHERE workspace_id=? AND version=?',w.id,version);if(!r)error(404,'Rule version not found.');return JSON.parse(r.data)}
-async function newWorkspace(db,role){
- const raw=token(),w={id:id(),role,csrf:token(),created_at:now(),expires_at:new Date(Date.now()+DAYS*86400000).toISOString(),active_version:1};
- const policy={...DEFAULT_RULES,version:1,created_at:w.created_at,created_by:'Demo setup',reason:'Initial illustrative policy'};
- const commands=[sql(db,'INSERT INTO demo_workspaces VALUES (?,?,?,?,?,?,?,?)',w.id,await hash(raw),w.created_at,w.expires_at,w.role,w.csrf,1,0),sql(db,'INSERT INTO demo_rule_versions VALUES (?,?,?,?)',id(),w.id,1,JSON.stringify(policy))];
- // Fictional checks are copied into every visitor's isolated workspace.
+async function sharedWorkspace(db){
+ const existing=await first(db,'SELECT id,active_version FROM demo_workspaces WHERE id=?',SHARED_WORKSPACE);if(existing)return existing;
+ const created=now(),policy={...DEFAULT_RULES,version:1,created_at:created,created_by:'Demo setup',reason:'Initial illustrative policy'};
+ // Stable seed IDs and one atomic batch prevent duplicate seed history on concurrent first visits.
+ const seedId=async name=>(await hash(SHARED_WORKSPACE+':'+name)).slice(0,24);
+ const commands=[sql(db,'INSERT OR IGNORE INTO demo_workspaces VALUES (?,?,?,?,?,?,?,?)',SHARED_WORKSPACE,'shared-team-no-login-token',created,'9999-12-31T23:59:59Z','','',1,0),sql(db,'INSERT OR IGNORE INTO demo_rule_versions VALUES (?,?,?,?)',await seedId('policy'),SHARED_WORKSPACE,1,JSON.stringify(policy))];
  for(const [index,name] of ['review_roster','clean_roster'].entries()){
-  const f=fixtures.find(x=>x.name===name),upload=id(),run=id(),ownerRole=index===0?'scheduler':'manager',created=new Date(Date.now()-(index+1)*3600000).toISOString();
+  const f=fixtures.find(x=>x.name===name),upload=await seedId(name+':upload'),run=await seedId(name+':run'),ownerRole=index===0?'scheduler':'manager';
   const digest=await hash(f.csv),result={...checkRoster(f.rows),id:run,created_at:created,filename:name+'.csv',owner:names[ownerRole],file_hash:digest,rules:policy};
-  commands.push(sql(db,'INSERT INTO demo_uploads VALUES (?,?,?,?,?,?,?,?)',upload,w.id,ownerRole,name+'.csv',created,digest,1,JSON.stringify(f.rows)),sql(db,'INSERT INTO demo_runs VALUES (?,?,?,?,?,?,?)',run,upload,w.id,ownerRole,name+'.csv',created,JSON.stringify(result)));
+  commands.push(sql(db,'INSERT OR IGNORE INTO demo_uploads VALUES (?,?,?,?,?,?,?,?)',upload,SHARED_WORKSPACE,ownerRole,name+'.csv',created,digest,1,JSON.stringify(f.rows)),sql(db,'INSERT OR IGNORE INTO demo_runs VALUES (?,?,?,?,?,?,?)',run,upload,SHARED_WORKSPACE,ownerRole,name+'.csv',created,JSON.stringify(result)));
  }
- commands.push(audit(db,w,'demo.created',w.id,{synthetic_seed_checks:2}));await db.batch(commands);
+ commands.push(sql(db,'INSERT OR IGNORE INTO demo_audit_events VALUES (?,?,?,?,?,?,?)',await seedId('created'),SHARED_WORKSPACE,'system','demo.created',SHARED_WORKSPACE,created,JSON.stringify({synthetic_seed_checks:2})));
+ await db.batch(commands);return first(db,'SELECT id,active_version FROM demo_workspaces WHERE id=?',SHARED_WORKSPACE);
+}
+async function newSession(db,role){
+ const workspace=await sharedWorkspace(db),raw=token(),w={...workspace,session_id:id(),role,csrf:token(),expires_at:new Date(Date.now()+DAYS*86400000).toISOString()};
+ await db.batch([sql(db,'DELETE FROM demo_sessions WHERE expires_at<=?',now()),sql(db,'INSERT INTO demo_sessions VALUES (?,?,?,?,?,?,?)',w.session_id,await hash(raw),w.id,role,w.csrf,now(),w.expires_at),audit(db,w,'demo.role_selected',w.session_id,{role})]);
  return {w,raw};
 }
 export async function handleApi(request,db,settings={}){
@@ -54,8 +64,8 @@ export async function handleApi(request,db,settings={}){
    let body;try{body=JSON.parse(new TextDecoder().decode(await readBody(request,4096)))}catch(e){if(e instanceof ApiError)throw e;error(422,'Provide a demo role.')}
    const role=body.role;if(!['scheduler','manager'].includes(role))error(422,'Choose Scheduler or Manager.');
    let raw;
-   if(!w){({w,raw}=await newWorkspace(db,role))}
-   else{w.role=role;w.csrf=token();await db.batch([sql(db,'UPDATE demo_workspaces SET role=?,csrf=? WHERE id=?',role,w.csrf,w.id),audit(db,w,'demo.role_selected',w.id,{role})])}
+   if(!w){({w,raw}=await newSession(db,role))}
+   else{w.role=role;w.csrf=token();await db.batch([sql(db,'UPDATE demo_sessions SET role=?,csrf=? WHERE id=?',role,w.csrf,w.session_id),audit(db,w,'demo.role_selected',w.session_id,{role})])}
    const headers=raw?{'Set-Cookie':`${COOKIE}=${raw}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${DAYS*86400}${url.protocol==='https:'?'; Secure':''}`} : {};
    return response(identity(w),200,headers);
   }
@@ -63,13 +73,12 @@ export async function handleApi(request,db,settings={}){
   if(method==='POST'&&request.headers.get('x-csrf-token')!==w.csrf)error(403,'This demo session changed. Refresh and choose a role again.');
   const manager=()=>{if(w.role!=='manager')error(403,'Manager access required.')};
   if(path==='/api/auth/me')return response(identity(w));
-  if(path==='/api/auth/logout'&&method==='POST'){await db.batch([audit(db,w,'demo.role_left',w.id),sql(db,'UPDATE demo_workspaces SET role=?,csrf=? WHERE id=?','',token(),w.id)]);return response({ok:true})}
+  if(path==='/api/auth/logout'&&method==='POST'){await db.batch([audit(db,w,'demo.role_left',w.session_id),sql(db,'DELETE FROM demo_sessions WHERE id=?',w.session_id)]);return response({ok:true},200,{'Set-Cookie':`${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${url.protocol==='https:'?'; Secure':''}`})}
   if(path==='/api/rules'&&method==='GET')return response(await getRule(db,w));
   if(path==='/api/rules/history'&&method==='GET'){manager();return response((await all(db,'SELECT data FROM demo_rule_versions WHERE workspace_id=? ORDER BY version DESC LIMIT 100',w.id)).map(r=>JSON.parse(r.data)))}
   if(path==='/api/rules'&&method==='POST'){
    manager();let b;try{b=JSON.parse(new TextDecoder().decode(await readBody(request,8192)))}catch(e){if(e instanceof ApiError)throw e;error(422,'Invalid settings JSON.')}
    if(!Number.isInteger(b.expected_version)||b.expected_version!==w.active_version)error(409,'Rules changed in another tab. Reload before saving.');
-   if(w.active_version>=100)error(422,'This demo supports up to 100 rule versions.');
    if(typeof b.name!=='string'||b.name.trim().length<3||b.name.length>80||typeof b.reason!=='string'||b.reason.trim().length<5||b.reason.length>400)error(422,'Supply a rule name and a change reason of at least five characters.');
    if(!Number.isFinite(b.max_duty_hours)||b.max_duty_hours<1||b.max_duty_hours>24||!Number.isFinite(b.min_rest_hours)||b.min_rest_hours<1||b.min_rest_hours>48||!['start','end'].includes(b.certification_at))error(422,'Thresholds must be within the allowed range.');
    const policy={name:b.name.trim(),max_duty_hours:b.max_duty_hours,min_rest_hours:b.min_rest_hours,certification_at:b.certification_at,version:w.active_version+1,created_at:now(),created_by:names[w.role],reason:b.reason.trim()};
@@ -82,7 +91,6 @@ export async function handleApi(request,db,settings={}){
    return response(policy);
   }
   if(path==='/api/uploads'&&method==='POST'){
-   const count=await first(db,'SELECT COUNT(*) AS n FROM demo_uploads WHERE workspace_id=?',w.id);if(count.n>=MAX_UPLOADS)error(422,'This sample workspace has reached its 30-upload limit.');
    const bytes=await readBody(request,maxBytes+1024*1024);let form;
    try{form=await new Response(bytes,{headers:{'Content-Type':request.headers.get('content-type')||''}}).formData()}catch{error(422,'Use a CSV or XLSX file upload.')}
    const file=form.get('file');if(!file||typeof file==='string')error(422,'Select a roster file.');
