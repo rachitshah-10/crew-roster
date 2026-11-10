@@ -1,0 +1,20 @@
+services:
+  crewcheck:
+    build: .
+    image: crewcheck:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # Add your server's host name here when it is not reached via localhost.
+      CREWCHECK_ALLOWED_HOSTS: ${CREWCHECK_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      CREWCHECK_SCHEDULER_PASSWORD: ${CREWCHECK_SCHEDULER_PASSWORD:-SchedulerDemo!2026}
+      CREWCHECK_MANAGER_PASSWORD: ${CREWCHECK_MANAGER_PASSWORD:-ManagerDemo!2026}
+      # Set to 1 only behind HTTPS.
+      CREWCHECK_SECURE_COOKIE: ${CREWCHECK_SECURE_COOKIE:-0}
+    volumes:
+      # Database and original uploaded files survive container rebuilds.
+      - crewcheck-data:/data
+    restart: unless-stopped
+
+volumes:
+  crewcheck-data:

@@ -9,21 +9,25 @@ The separate reference public review demo is deployed using a Cloudflare Worker 
 
 ## Local reference deployment shape
 
-One FastAPI process serves a static browser UI, the API and documentation. SQLite is a local database file. No cloud services, external APIs, AI calls, workers or message queue are required. Modules shown inside the server boundary are **not microservices**.
+One FastAPI process serves a static browser UI, the API and documentation. The database is SQLite by default and PostgreSQL when `CREWCHECK_DATABASE_URL` points to one; the API never contains SQL. No cloud services, external APIs, AI calls, workers or message queue are required. Modules shown inside the server boundary are **not microservices**.
 
 | Component | Implementation | Responsibility |
 |---|---|---|
 | Browser | `app/static/` | Login, upload, preview, findings, history, rule configuration |
 | Request layer | `app/main.py` | Bounded request body, origin/host checks, session, CSRF and role enforcement |
 | Parser | `app/parsing.py` | Strict CSV/XLSX schema, data validation, UTC normalization |
+| Rules | `app/ruleset.py` | Rule building blocks, validation, presets, legacy conversion |
 | Checker | `app/engine.py` | Deterministic findings with evidence; no side effects |
-| Persistence | `app/storage.py` | SQLite schema, connections, demo account setup, password hashes |
+| Timeline | `app/timeline.py` | Per-crew lanes and zone-aware days derived from a saved result |
+| Persistence | `app/repository.py`, `app/schema.py`, `app/migrations/` | All database access (SQLAlchemy Core), table definitions, Alembic migrations applied at startup |
+| File store | `app/filestore.py` | Original upload bytes by SHA-256 (local disk; same `put`/`get` interface for other backends) |
+| Security helpers | `app/storage.py` | Password hashes and monotonic UTC timestamps |
 
 ## Upload-to-result lifecycle
 
 1. Browser sends a multipart upload with its session cookie and CSRF header.
 2. API checks authentication and request size. Parser validates the entire file. Any invalid row rejects the whole upload; errors return source row numbers.
-3. The server stores normalized rows, sanitized filename, source SHA-256, upload time, owner and the current rule version in one transaction. Original file bytes are not retained after parsing.
+3. The server stores normalized rows, sanitized filename, source SHA-256, upload time, owner and the current rule version in one transaction. Original file bytes are kept in the content-addressed file store, and every attempt (including rejected files) is recorded in the import log.
 4. The preview shows up to 20 records and the captured rule version. All accepted duties are checked.
 5. On explicit **Run roster check**, the server loads those rows and that captured rule version, runs the pure engine and stores the result atomically. Repeated check requests for one upload return the same result ID.
 6. Later reads use the persisted result and the referenced immutable rules. New rule versions apply only to new upload previews. An existing preview retains its shown version even if rules change before Run.
@@ -41,7 +45,7 @@ One FastAPI process serves a static browser UI, the API and documentation. SQLit
 | `uploads` | id, owner_id, filename, file_hash, created_at, rule_version, rows_json | Validated preview and its rule reference |
 | `runs` | id, upload_id, created_at, result_json | Immutable result snapshot, rows, flags, coverage, engine version |
 
-Foreign keys are enabled per connection. WAL mode and a 15-second SQLite timeout support modest local concurrency. JSON payloads keep the small snapshot model simple; this is not an analytics warehouse. The schema version is currently 1 (`PRAGMA user_version`). There is no migration framework yet.
+The same SQLAlchemy Core code runs on SQLite and PostgreSQL, and the full test suite runs against both. Alembic migrations (`app/migrations/`) run at startup; the baseline only creates missing tables, so databases created before migrations existed are adopted unchanged. Concurrency guarantees do not depend on the database: rule versions are numbered previous + 1 and protected by the primary key (a concurrent save gets 409), and a second check of the same upload returns the first run via the `runs.upload_id` unique key. On SQLite, writes use `BEGIN IMMEDIATE`, WAL and a 15-second timeout. Timestamps are ISO-8601 UTC text and snapshots JSON text so saved evidence is identical on either database; this is not an analytics warehouse.
 
 ## API map
 

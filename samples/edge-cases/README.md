@@ -12,8 +12,9 @@ Use maximum duty **12 hours**, minimum rest **10 hours**, and certification asse
 | `04_duplicate_records` | Upload rejected | Row 4 repeats the same crew_id and duty_id from row 3. |
 | `05_corrected_roster` | 2 duties, 0 findings | Two 8 h duties separated by exactly 10 h rest; valid certification. Use as the normal example and to recover from the invalid files. |
 | `06_exact_boundaries` | 2 duties, 0 findings | Duty equals 12 h, rest equals 10 h and certification expiry equals duty end. Equality passes these configured rules. |
+| `07_certification_boundaries` | 5 duties, 2 flagged duties, 2 findings | Expiry exactly at duty end passes (B01), also when written with a +09:00 offset (B03) and for an overnight duty ending the next day (B04). Expiry 1 ms before duty end (B02) and at duty start (B05) are CERT_EXPIRED. With certification assessed at duty start, all five pass. |
 
-Suggested meeting order: **05 → 01 → 02 → 04 → 05 → 03 → Manager history**. Use 06 if asked about boundary conditions. The existing `../input_errors.csv` covers missing time zones and a zero-duration duty.
+Suggested meeting order: **05 → 01 → 02 → 04 → 05 → 03 → Manager history**. Use 06 and 07 if asked about boundary conditions. The existing `../input_errors.csv` covers missing time zones and a zero-duration duty.
 
 Every accepted case contains one crew member's first duty without earlier rest context. Zero findings means no issue found by the implemented checks, not complete regulatory compliance. Duplicate detection applies within one file. Re-uploading a file creates a new snapshot; it is not cross-file deduplication or a roster-edit workflow.
 

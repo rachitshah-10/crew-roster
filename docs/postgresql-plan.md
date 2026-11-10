@@ -8,7 +8,9 @@
 | Public review demo | Cloudflare Worker / JavaScript | Cloudflare D1, based on SQLite | Shared team workspace with separate role sessions |
 | Planned internal deployment | Internal application server | PostgreSQL | Company authentication and assigned roles |
 
-PostgreSQL migration is **planned, not implemented or deployed**. The review demo uses a hosting-compatible backend; the local Python reference remains available. Golden synthetic fixtures verify that both deterministic checkers produce the same findings. Cloudflare-specific D1 access stays in the hosted API module, outside the pure checker.
+**Update (November 2026):** the FastAPI application now runs on PostgreSQL by setting `CREWCHECK_DATABASE_URL` (see `compose.postgres.yaml`). All SQL lives in `app/repository.py` (SQLAlchemy Core), schema changes go through Alembic, and the full test suite passes on both SQLite and PostgreSQL. Remaining items from this plan: company authentication, converting timestamp text to `timestamptz` and JSON text to `jsonb` (a later migration), backups and retention.
+
+The original plan text follows. PostgreSQL migration was **planned, not implemented or deployed**. The review demo uses a hosting-compatible backend; the local Python reference remains available. Golden synthetic fixtures verify that both deterministic checkers produce the same findings. Cloudflare-specific D1 access stays in the hosted API module, outside the pure checker.
 
 ## Audit evidence
 

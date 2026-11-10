@@ -229,5 +229,3 @@ node_modules/
 outputs/
 .agents/mcp_config.json
 
-# Authored hosted application modules
-!/hosted/lib/

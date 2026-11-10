@@ -1,0 +1,6 @@
+"crew_id","crew_name","role","duty_id","duty_start","duty_end","certification_expires_at"
+"CERT-001","Rowan Fictional","pilot","CERT-B01","2026-11-10T08:00:00Z","2026-11-10T16:00:00Z","2026-11-10T16:00:00Z"
+"CERT-002","Sasha Fictional","pilot","CERT-B02","2026-11-10T08:00:00Z","2026-11-10T16:00:00Z","2026-11-10T15:59:59.999Z"
+"CERT-003","Morgan Fictional","cabin","CERT-B03","2026-11-10T08:00:00Z","2026-11-10T16:00:00Z","2026-11-11T01:00:00+09:00"
+"CERT-004","Quinn Fictional","cabin","CERT-B04","2026-11-10T20:00:00Z","2026-11-11T04:00:00Z","2026-11-11T04:00:00Z"
+"CERT-005","Jordan Fictional","pilot","CERT-B05","2026-11-10T08:00:00Z","2026-11-10T16:00:00Z","2026-11-10T08:00:00Z"

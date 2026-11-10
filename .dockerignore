@@ -1,0 +1,16 @@
+.git
+.venv
+.pytest_cache
+.coverage
+htmlcov
+__pycache__
+**/__pycache__
+node_modules
+data
+outputs
+presentation
+tests
+scripts
+*.db
+*.db-*
+.env

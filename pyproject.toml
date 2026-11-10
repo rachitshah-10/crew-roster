@@ -3,9 +3,36 @@ name = "crewcheck"
 version = "0.1.0"
 description = "Local crew roster review MVP with deterministic checks and versioned evidence"
 requires-python = ">=3.11"
-dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "python-multipart>=0.0.18,<1", "openpyxl>=3.1.5,<4", "defusedxml>=0.7.1,<1"]
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.30,<1",
+    "python-multipart>=0.0.18,<1",
+    "openpyxl>=3.1.5,<4",
+    "defusedxml>=0.7.1,<1",
+    "sqlalchemy>=2.0,<3",
+    "alembic>=1.13,<2",
+]
+
+[project.optional-dependencies]
+postgres = [
+    "psycopg[binary]>=3.2,<4",
+]
 [dependency-groups]
-dev = ["pytest>=8,<10", "httpx>=0.27,<1"]
+dev = [
+    "pytest>=8,<10",
+ "httpx>=0.27,<1",
+ "pytest-cov>=7.1,<8",
+ "psycopg[binary]>=3.2,<4",
+]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 96
+skip_empty = true

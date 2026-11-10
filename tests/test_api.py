@@ -2,6 +2,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from app.main import create_app
+from app.ruleset import builtin_rules
 
 SAMPLE=Path(__file__).resolve().parents[1]/'samples/sample_roster.csv'
 
@@ -19,7 +20,8 @@ def upload(client):
     assert response.status_code==201,response.text
     return response.json()
 
-def rule_body(version=1):return dict(expected_version=version,name='Demo rule update',max_duty_hours=16,min_rest_hours=8,certification_at='start',reason='Demonstrate versioned rule snapshots')
+def rule_body(version=1,**thresholds):return dict(expected_version=version,name='Demo rule update',rules=builtin_rules(**{'max_duty_hours':16,'min_rest_hours':8,'certification_at':'start',**thresholds}),reason='Demonstrate versioned rule snapshots')
+def rule(view,code):return next(r for r in view['rules'] if r['code']==code)
 
 def test_anonymous_and_login_logout(app):
     with TestClient(app) as c:
@@ -62,7 +64,7 @@ def test_preview_run_idempotence_history_access_and_snapshot(app):
         assert manager.get('/api/runs').json()['total']==2
         assert scheduler.get('/api/runs').json()['total']==1
         assert manager.post('/api/rules',json=rule_body()).status_code==409
-        assert manager.get('/api/runs/'+run['id']).json()['rules']['max_duty_hours']==12
+        assert rule(manager.get('/api/runs/'+run['id']).json()['rules'],'DUTY_LIMIT')['limit']==12
         assert manager.post('/api/rules',json=rule_body(2)).status_code==200
         assert manager.get('/api/runs/'+run['id']).json()==run
         historical=next(r for r in manager.get('/api/runs').json()['items'] if r['id']==run['id'])
@@ -85,7 +87,7 @@ def test_bad_uploads_and_no_partial_history(app):
 def test_threshold_validation_and_filtering(app):
     with TestClient(app) as c:
         login(c,'manager')
-        body=rule_body();body['max_duty_hours']=0
+        body=rule_body(max_duty_hours=-1)
         assert c.post('/api/rules',json=body).status_code==422
         body=rule_body();body['reason']='     '
         assert c.post('/api/rules',json=body).status_code==422
