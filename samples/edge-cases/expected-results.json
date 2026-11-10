@@ -85,6 +85,24 @@
         "findings": 0,
         "codes": []
       }
+    },
+    {
+      "name": "07_certification_boundaries",
+      "description": "Certification expiry exactly at, just before and around duty end",
+      "expected": {
+        "duties": 5,
+        "flagged_duties": 2,
+        "findings": 2,
+        "codes": [
+          "CERT_EXPIRED",
+          "CERT_EXPIRED"
+        ],
+        "duty_ids": [
+          "CERT-B02",
+          "CERT-B05"
+        ],
+        "evidence": "B01 expiry equals duty end (valid); B02 expires 1 ms before end; B03 equals end via +09:00 offset (valid); B04 overnight duty, expiry equals next-day end (valid); B05 expires at duty start"
+      }
     }
   ]
 }

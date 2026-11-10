@@ -25,20 +25,41 @@ All endpoints are same-origin. Authenticated POST requests require `X-CSRF-Token
 
 ```json
 {
-  "version": 1,
-  "name": "Illustrative MVP rules",
-  "max_duty_hours": 12,
-  "min_rest_hours": 10,
-  "certification_at": "end",
-  "created_at": "2026-11-06T12:00:00Z",
-  "created_by": "Demo setup",
-  "reason": "Initial illustrative policy"
+  "version": 2,
+  "name": "Night operations",
+  "created_at": "2026-11-10T12:00:00Z",
+  "created_by": "manager",
+  "reason": "Add a night duty limit",
+  "rules": [
+    {"code": "DUTY_LIMIT", "name": "Duty exceeds limit", "enabled": true, "role": "all", "when": [],
+     "measure": "duty_hours", "per": "duty", "window_days": null, "compare": "<=", "limit": 12, "zone": "UTC", "at": "end"},
+    {"code": "NIGHT_DUTY_LIMIT", "name": "Night duty limit", "enabled": true, "role": "pilot",
+     "when": [{"field": "overlaps_time", "value": ["02:00", "05:59"]}],
+     "measure": "duty_hours", "per": "duty", "window_days": null, "compare": "<=", "limit": 10, "zone": "Asia/Seoul", "at": "end"}
+  ]
 }
 ```
 
-`created_by` is the local user identifier (or setup identifier), or a hosted demo display name. Timestamp formatting can differ while representing the same UTC instant.
+A rule reads as a sentence: *[role] · duties matching all `when` conditions · `measure` checked `per` must be `compare` `limit`*. A finding is raised when the comparison is false; its `code` is the rule's `code` and its `title` the rule's `name`. Rule versions saved in the original three-threshold format (`max_duty_hours`, `min_rest_hours`, `certification_at`) are converted on read, so historical checks remain readable.
 
-`POST /api/rules` is manager-only. Body: `name`, `max_duty_hours`, `min_rest_hours`, `certification_at` (`start` or `end`), `reason`, and `expected_version`. Success is **200** with the new policy. A stale version returns 409. Name length is 3–80 characters, reason 5–400, maximum duty 1–24 hours, minimum rest 1–48 hours. These are current configuration controls, not approved operational requirements.
+`created_by` is the local user identifier (or setup identifier). Timestamp formatting can differ while representing the same UTC instant.
+
+`GET /api/rules/catalog` (signed in) lists the building blocks: `measures` (label, unit, allowed `per`, `min`/`max` limit), `periods`, `conditions`, `roles`, `compare` and `presets`.
+
+| `measure` | allowed `per` | unit |
+|---|---|---|
+| `duty_hours` | `duty`, `day` (clipped to local calendar days), `rolling_days` (window ending at each duty end, clipped) | h |
+| `duty_count` | `day`, `rolling_days` | duties |
+| `rest_hours` | `between_duties` (conditions select the duty *before* the rest; overlaps are ignored) | h |
+| `overlap_hours` | `between_duties` | h |
+| `consecutive_days` | `streak` (local calendar days with any duty) | days |
+| `certification_remaining_hours` | `duty`, measured from duty `at` start/end; missing expiry yields `CERT_MISSING` (incomplete) | h |
+
+Conditions (`when`, up to 5, combined with AND): `start_time`, `end_time`, `overlaps_time` (two `HH:MM` values; ranges may wrap midnight), `weekday` (0 = Monday … 6 = Sunday), `crew_id` (list). Times and days use the rule's `zone`. A duty gets at most one finding per rule code.
+
+`POST /api/rules` is manager-only. Body: `name` (3–80), `reason` (5–400), `expected_version` and `rules` (1–30, unique `code` matching `^[A-Z][A-Z0-9_]{2,39}$`). Success is **200** with the new version; a stale version returns 409; invalid rules return 422 with `loc` pointing at the rule index and field.
+
+`POST /api/rules/preview` is manager-only and saves nothing. Body: `run_id` and draft `rules`. Returns `saved` and `proposed` summaries, `added`/`removed` finding counts (by duty and code), `by_rule` counts, `evidence_missing` and up to 10 `examples` of new findings.
 
 Uploads capture a rule version when accepted. A later rule change does not change an existing preview, even before its first check. Saved checks retain their findings and applied rules. Repeating a check returns the same result ID. UI history and results must use each record's `rules` object, never substitute the active policy.
 
@@ -56,9 +77,9 @@ Uploads capture a rule version when accepted. A later rule change does not chang
 
 The mapping can cover all canonical input fields. Six core fields are required: `crew_id`, `crew_name`, `role`, `duty_id`, `duty_start`, `duty_end`. `certification_expires_at` is optional; missing evidence becomes `CERT_MISSING`. Roles are `pilot` or `cabin`. Duplicate `(crew_id, duty_id)` pairs within a file and invalid required values reject the import; no partial upload is saved. Extra columns are allowed.
 
-When choices are needed, 422 returns `detail`, `errors`, and `import_options` containing applicable `worksheets`, `headers`, `mapping`, `needs_mapping` or `needs_timezone` fields. Resubmit the same file with confirmed options. Explicit timestamp offsets are honored; naive timestamps/Excel dates require a confirmed source timezone. Ambiguous or nonexistent DST times require correction.
+When choices are needed, 422 returns `detail`, `errors`, and `import_options` containing applicable `worksheets`, `headers`, `mapping`, `needs_mapping` or `needs_timezone` fields. Resubmit the same file with confirmed options. Explicit timestamp offsets are honored; naive timestamps/Excel dates require a confirmed source timezone. Times inside a DST change resolve automatically to the stricter reading and are listed in the row's `dst_adjustments`.
 
-Success is **201**, with `id`, `filename`, `row_count`, `crew_count`, `preview` (first 20 normalized rows), `preview_limit`, captured `rules`, and `import_settings`. A normalized row includes the seven canonical fields plus `row_number`, with `source_sheet` and `source_timezone` provenance when applicable. Dates are normalized to UTC; missing certification is empty. The preview does not truncate the saved roster.
+Success is **201**, with `id`, `filename`, `row_count`, `crew_count`, `preview` (first 20 normalized rows), `preview_limit`, captured `rules`, `import_settings`, `import_id` and `dst_adjusted_rows`. Rejected uploads (422) also return `import_id`. A normalized row includes the seven canonical fields plus `row_number`, with `source_sheet` and `source_timezone` provenance when applicable. Dates are normalized to UTC; missing certification is empty. The preview does not truncate the saved roster.
 
 ## Check and results
 
@@ -86,6 +107,9 @@ Equality at the duty/rest/expiry boundary passes. “No flags” only covers con
 
 - `GET /api/runs?q=&from_date=&to_date=&offset=0`: `{ "items": [], "total": 0, "offset": 0, "limit": 25 }`. Each item contains `id`, `created_at`, `filename`, `owner`, `summary`, and full saved `rules`. Filename search and inclusive UTC `YYYY-MM-DD` date filters apply. Scheduler ownership is enforced server-side.
 - `GET /api/runs/{id}`: full saved result; never recalculates. Inaccessible IDs return 404.
+- `GET /api/runs/{id}/timeline`: per-crew timeline derived only from the saved rows and flags; never recalculates. Returns `start`/`end` (whole UTC days), `days` (`date`, `findings` counted by duty start day) and `crew` lanes sorted by findings then crew ID. Each lane has `crew_id`, `crew_name`, `role`, `findings`, `duties` (`row_number`, `duty_id`, `start`, `end`, `hours`, `codes`, `status`: `ok`/`review`/`incomplete`) and `gaps` (`kind`: `short_rest`/`overlap`, `start`, `end`, `previous_duty_id`, `duty_id`, `observed`). Same access rules as the run itself. Optional `?tz=<IANA zone>` (default `UTC`) sets day boundaries; each day has `date`, `start`, `end` (UTC instants), `hours` (23/25 on DST changes) and `findings`. Unknown zones return 422.
+- `GET /api/imports?status=all|accepted|rejected|needs_setup&offset=0`: every upload attempt, newest first, 25 per page. Items have `id`, `created_at`, `filename`, `owner`, `status`, `size`, `file_hash`, `stored`, `row_count`, `upload_id`, `run_id`, `options`, `errors` and `import_options`. Schedulers see their own attempts; managers see all.
+- `GET /api/imports/{id}`: one attempt. `GET /api/imports/{id}/file`: the original bytes as an attachment; 404 when not stored or not accessible.
 - `GET /api/audit`: hosted manager-only, latest 100 workspace events as `items` containing `id`, `actor_role`, `action`, `target_id`, `created_at`, `details` (JSON string). Local implementation has check/rule history but no equivalent general audit endpoint.
 - `GET /api/templates/csv` and `/xlsx`: local file response; hosted redirect to the static fictional sample.
 - `GET /api/health`: health metadata (local mode or hosted database availability).

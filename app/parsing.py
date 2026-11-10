@@ -24,7 +24,13 @@ class ImportSetupError(RosterError):
         self.import_options = options
         self.args = (message,)
 
-def normalize_timestamp(value, key, zone=""):
+# During a clock change a local time has two possible instants (repeated hour) or
+# none (skipped hour). Resolve automatically to the stricter reading for checks:
+# earliest start, latest end, earliest certification expiry.
+DST_CHOICE = {"duty_start": "earliest", "duty_end": "latest", "certification_expires_at": "earliest"}
+
+
+def normalize_timestamp(value, key, zone="", notes=None):
     if isinstance(value, datetime):
         dt = value
     else:
@@ -46,14 +52,18 @@ def normalize_timestamp(value, key, zone=""):
             try: tz = ZoneInfo(zone)
             except (ZoneInfoNotFoundError, ValueError):
                 raise ValueError("Select a valid source time zone, such as America/New_York, UTC or +09:00.")
-            candidates = set()
-            for fold in (0, 1):
-                candidate = dt.replace(tzinfo=tz, fold=fold).astimezone(timezone.utc)
-                if candidate.astimezone(tz).replace(tzinfo=None) == dt:
-                    candidates.add(candidate)
-            if len(candidates) != 1:
-                raise ValueError(f"{key} is {'ambiguous' if candidates else 'nonexistent'} in {zone} because of a clock change. Supply an explicit UTC offset in that cell.")
-            dt = candidates.pop()
+            readings = {dt.replace(tzinfo=tz, fold=fold).astimezone(timezone.utc) for fold in (0, 1)}
+            if len(readings) == 1:
+                dt = readings.pop()
+            else:
+                choice = DST_CHOICE.get(key, "earliest")
+                local = dt
+                dt = (min if choice == "earliest" else max)(readings)
+                repeated = any(r.astimezone(tz).replace(tzinfo=None) == local for r in readings)
+                if notes is not None:
+                    notes.append({"field": key, "local": local.isoformat(sep=" ", timespec="minutes"), "zone": zone,
+                                  "kind": "repeated" if repeated else "skipped", "choice": choice,
+                                  "utc": dt.isoformat(timespec="milliseconds").replace(".000+00:00", "Z").replace("+00:00", "Z")})
     return dt.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace(".000+00:00", "Z").replace("+00:00", "Z")
 
 def parse_roster(filename, content, options=None):
@@ -126,8 +136,9 @@ def parse_roster(filename, content, options=None):
             for key in COLUMNS[:-1]:
                 if not str(row[key]).strip(): raise ValueError(f"{key} is required.")
             if any(len(str(v))>160 for v in row.values()): raise ValueError("Cell text must not exceed 160 characters.")
+            notes = []
             for key in ("duty_start", "duty_end", "certification_expires_at"):
-                if row[key] != "": row[key]=normalize_timestamp(row[key], key, options.get("timezone", ""))
+                if row[key] != "": row[key]=normalize_timestamp(row[key], key, options.get("timezone", ""), notes)
             row={k:str(v).strip() for k,v in row.items()}
             row["role"]=row["role"].lower()
             if row["role"] not in ("pilot","cabin"): raise ValueError("role must be pilot or cabin.")
@@ -139,6 +150,7 @@ def parse_roster(filename, content, options=None):
             seen.add(key); people[row["crew_id"]]=identity; row["row_number"]=number
             if options.get("worksheet"): row["source_sheet"]=options["worksheet"]
             if options.get("timezone"): row["source_timezone"]=options["timezone"]
+            if notes: row["dst_adjustments"]=notes
             rows.append(row)
         except ImportSetupError:
             zone_needed=True

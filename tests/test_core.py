@@ -101,6 +101,7 @@ def test_excel_dates_sheet_selection_mapping_and_timezone():
 def test_timezone_ambiguity_and_nonexistent_times():
     from app.parsing import normalize_timestamp
     assert normalize_timestamp('2026-07-09 06:00','start','America/New_York')=='2026-07-09T10:00:00Z'
-    for value in ['2026-11-01 01:30','2026-03-08 02:30']:
-        with pytest.raises(ValueError):normalize_timestamp(value,'start','America/New_York')
+    # Clock-change times are resolved automatically (see tests/test_dst.py for the full rules).
+    assert normalize_timestamp('2026-11-01 01:30','duty_start','America/New_York')=='2026-11-01T05:30:00Z'
+    assert normalize_timestamp('2026-03-08 02:30','duty_start','America/New_York')=='2026-03-08T06:30:00Z'
     assert normalize_timestamp('2026-11-01T01:30:00-04:00','start','America/New_York')=='2026-11-01T05:30:00Z'

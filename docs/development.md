@@ -49,7 +49,8 @@ For backups while live, use SQLite's backup API; do not copy only the main file 
 - **403 after a long-open page:** refresh and sign in again. Check the CSRF header and same-origin URL.
 - **Cookie not retained over HTTP:** leave `CREWCHECK_SECURE_COOKIE=0` for local HTTP; enable it only with HTTPS.
 - **Excel import setup:** select the roster worksheet, map different header names, and select the source zone for Excel dates. Formulas in the selected sheet need values.
-- **Time zone error:** choose the actual source zone. For daylight-saving ambiguity, provide an explicit offset in the affected cell.
+- **Time zone error:** choose the actual source zone. Daylight-saving changes are handled automatically; rows inside a clock change are marked DST and their details show the reading used. Put an explicit offset in the cell to override.
+- **Display time zone:** times are stored in UTC and shown in the browser's zone. Use the clock selector in the top bar to switch (saved per browser); the timeline's day columns follow the selected zone, including 23 h and 25 h days.
 - **Historical result unchanged after configuration:** expected. A new upload preview is needed to capture a new rule version.
 - **Missing history:** scheduler sees own records; manager sees all. Date filters refer to check creation time in UTC, not duty date.
 

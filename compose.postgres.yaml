@@ -1,0 +1,28 @@
+# Run CrewCheck on PostgreSQL instead of SQLite:
+#   docker compose -f compose.yaml -f compose.postgres.yaml up -d --build
+# Original uploaded files still live in the crewcheck-data volume.
+services:
+  crewcheck:
+    environment:
+      CREWCHECK_DATABASE_URL: postgresql+psycopg://crewcheck:${POSTGRES_PASSWORD:-crewcheck}@db:5432/crewcheck
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: crewcheck
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crewcheck}
+      POSTGRES_DB: crewcheck
+    volumes:
+      - crewcheck-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crewcheck -d crewcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  crewcheck-postgres:

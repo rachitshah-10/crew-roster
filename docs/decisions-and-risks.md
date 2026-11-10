@@ -59,7 +59,8 @@ The consolidated current review baseline is the [project handbook](handbook/crew
 - No full aviation regulation implementation. FAA/EASA fatigue rules can depend on report time, sectors, augmented crews, acclimatization and cumulative limits. Those factors are not modeled.
 - First-duty rest cannot be established without preceding records. File history does not fix this automatically.
 - Hosted upload, check, policy-version and demo-role actions have persistent audit events. The local reference has no equivalent general audit-event table. Neither implementation logs every page view or offers a complete access audit.
-- Original source files are discarded after parsing. Digests and normalized rows support traceability, but byte-for-byte source retrieval is not available.
+- Original source files are retained for every upload attempt, including rejected ones, so the exact bytes can be retrieved from the Import log. Retention and deletion periods are not yet defined; the store grows until an administrator removes files.
+- Daylight-saving ambiguity is resolved automatically to the stricter reading (earliest start, latest end, earliest certification expiry) and recorded per row. Planners should still confirm adjusted rows in the preview.
 - Upload drafts persist even if a user leaves without running a check; no draft browser or cleanup job exists.
 - Rule history UI lists the latest 100 versions; run history uses pagination.
 - Checks run synchronously without a fixed row ceiling. Deployment resource budgets still apply. Production volume requires representative files and load testing.
