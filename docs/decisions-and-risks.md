@@ -1,6 +1,6 @@
 # Decisions and unresolved questions
 
-The consolidated current review baseline is the [project handbook](handbook/crewcheck-project-handbook.pdf), especially sections 2, 16–18. Environment-specific details below distinguish the retained local reference from the published web demo.
+The consolidated current review baseline is the [project handbook](handbook/crewcheck-project-handbook.pdf) (version 2.0), especially sections 2 and 16–18. The separately hosted web demo has been retired; notes below that mention it are historical.
 
 ## Feedback mapped to implementation
 

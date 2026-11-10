@@ -2,7 +2,7 @@
 
 For the Monday stakeholder meeting, use the [public web demo runbook](meeting-demo-runbook.html). It includes the verified normal, multiple-finding, missing-data, duplicate and recovery scenarios, plus the 30-minute agenda.
 
-This script describes the local account-based reference. For the public web demo and actual file-picker upload walkthrough, use sections 5–8 and 15 of the [project handbook](handbook/crewcheck-project-handbook.pdf).
+This script describes the account-based FastAPI application. For the full walkthrough with the timeline, import log and rule builder, use sections 5–8 and 15 of the [project handbook](handbook/crewcheck-project-handbook.pdf).
 
 ## 1. Present architecture before the app (2 minutes)
 

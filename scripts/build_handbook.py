@@ -1,310 +1,492 @@
-"""Build the reviewed client handbook from structured, versioned source."""
+"""Build the CrewCheck handbook (Word and PDF) from the content below.
+
+    npm run handbook:assets                        # refresh screenshots and diagrams (needs a running app)
+    uv run --group docs python scripts/build_handbook.py
+
+The PDF is printed by Google Chrome/Chromium in headless mode (set CHROME to its
+path if it is not found automatically). Output: docs/handbook/.
+"""
+import html
+import os
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
-import json
+
 from docx import Document
-from docx.shared import Inches, Pt, RGBColor
-from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from PIL import Image
+from docx.shared import Inches, Pt, RGBColor
 
-ROOT=Path(__file__).resolve().parents[1]
-OUT=ROOT/'docs'/'handbook'
-OUT.mkdir(parents=True,exist_ok=True)
-ASSETS=OUT/'assets'
-ASSETS.mkdir(exist_ok=True)
-PAGES=[]
-def page(title,*blocks): PAGES.append({'title':title,'blocks':list(blocks)})
-def p(t):return ('p',t)
-def h(t):return ('h',t)
-def steps(*items):return ('steps',list(items))
-def table(headers,rows,widths):return ('table',{'headers':headers,'rows':rows,'widths':widths})
-def code(t):return ('code',t)
-def fig(file,caption,width=6.8):return ('figure',{'file':file,'caption':caption,'width':width})
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "docs" / "handbook"
+ASSETS = OUT / "assets"
+NAME = "crewcheck-project-handbook"
+VERSION, DATE = "2.0", "10 November 2026"
 
-page('CrewCheck project handbook',
- p('MVP implementation and review guide'),
- p('Version 1.4  |  6 November 2026  |  Stakeholder review'),
- p('CrewCheck reviews crew rosters against explicit rules, displays the evidence behind each finding, and preserves the result with the rule version used. This handbook explains the current implementation from first use through technical handover. It accompanies the MVP design review presentation and the working public demo.'),
- p('The public demo is ready for fictional-data review. Operational use depends on an approved rulebook, authoritative roster and qualification data, assigned employee access, and an agreed internal operating model. PostgreSQL migration remains planned.'),
- h('Review topics'),
- table(['Requested topic','Handbook section'],[
- ['Proposed user workflow','4  User workflow'],['How a scheduler uploads a roster','5  Roster upload'],['How violations are displayed','6  Findings and evidence'],['How managers view historical flags','7  History and audit review'],['How threshold values are configured','8  Threshold configuration'],['Outstanding risks or unresolved questions','18  Decisions and handover']], [4.6,2.2]),
- h('Reading guide'),
- p('Sections 2–8 cover scope, architecture and user tasks. Sections 9–12 specify data, rules, storage and API behavior. Sections 13–17 cover installation, verification, operations and the internal deployment plan.'),
- p('This revision includes flexible import choices verified on 6 November 2026: worksheet selection, column mapping, Excel dates and source time zones. The upload screen is current; unchanged result and settings examples were captured on 5 November. Deployment provenance is recorded in outputs/publication.json.'),
- p('Public demo: https://crewcheck-roster-demo.swoonypopcorn.chatgpt.site'))
+PAGES = []
 
-page('2 Scope and access',
- p('The MVP supports CSV and Excel upload, file validation, preview, deterministic checking, per-duty evidence, historical results and versioned thresholds. A human reviews the findings and decides what to do next.'),
- table(['Capability','Scheduler','Manager'],[
- ['Upload and check CSV or XLSX','Yes','Yes'],['Read completed results','Scheduler-owned records','All records in the same workspace'],['Read active thresholds','Yes','Yes'],['Change thresholds and view rule history','No','Yes'],['View hosted audit events','No','Yes'],['Edit a roster or resolve a flag in the app','No','No']], [3.3,1.65,1.85]),
- h('Deployment distinctions'),
- table(['Environment','Application and data','Identity'],[
- ['Public review demo','Cloudflare Worker and SQLite-based D1','Selectable demo roles in a browser workspace'],['Local reference','FastAPI and a SQLite file','Two seeded local demo accounts'],['Planned internal server','Application server and PostgreSQL','Company authentication and assigned roles']], [1.65,2.65,2.5]),
- p('The hosted scheduler owner is a demo role within one workspace, not an individual employee account. Managers cannot see other visitors’ workspaces. A different browser or device starts a separate workspace. The local reference instead scopes records by user ID.'),
- h('Excluded from this MVP'),
- p('PDF, DOCX, legacy .xls and macro-enabled workbooks are outside input scope. The app does not edit schedules, notify crew, assign remediation, approve exceptions or use an LLM. It does not implement a complete aviation regulation, cross-upload duty history, cumulative duty limits or a full qualification registry.'))
 
-page('3 System architecture',
- p('The public demo serves a browser interface and same-origin API through a Cloudflare Worker. The API validates access, parses files, invokes a pure deterministic checker, and stores records in D1. The local FastAPI reference is a separate implementation, not a service called by the hosted app.'),
- fig('architecture.png','Figure 1  Public demo architecture and planned internal deployment'),
- p('The dashed backend boundary contains access checks, API handlers, file validation, the rule engine and persistence helpers. These are logical responsibilities within one Worker. Access and D1 helpers share lib/api.mjs. Handlers call the parser for uploads, the checker for Run, and storage for snapshots, history, rules and audit events. They do not form one mandatory pipeline for every request.'),
- h('Request and persistence lifecycle'),
- steps('Select a demo role. The server creates or reuses an isolated browser workspace.',
- 'Upload a file. The API checks the request, validates all rows and normalizes timestamp offsets to UTC.',
- 'Save a preview with normalized rows, file SHA-256, ownership and the captured rule version. Discard original file bytes.',
- 'Run the check explicitly. Load the captured policy, compute findings and save the immutable result with its audit event.',
- 'Return saved results on later reads. A repeat check for the same upload returns the original result.'),
- p('The pure checker has no storage or external-service side effects. Upload, rule and result mutations use database batches with their audit entries. A unique upload reference prevents duplicate saved runs.'))
+def page(title, *blocks): PAGES.append({"title": title, "blocks": list(blocks)})
+def p(text): return ("p", text)
+def h(text): return ("h", text)
+def steps(*items): return ("steps", list(items))
+def table(headers, rows, widths): return ("table", {"headers": headers, "rows": rows, "widths": widths})
+def code(text): return ("code", text)
+def fig(file, caption, width=6.8): return ("figure", {"file": file, "caption": caption, "width": width})
 
-page('4 User workflow',
- fig('workflow.png','Figure 2  Upload and check sequence'),
- p('User denotes a person: Crew Scheduler uploads and reviews rosters; Planning Manager reviews history and configures rules. Read the sequence from top to bottom. Solid arrows show actions and requests; dashed arrows show returned data or displayed responses. The invalid-file branch ends the request.'),
- h('Scheduler journey'),
- p('Choose Scheduler, upload a roster, resolve any validation errors, review the preview and run the check. Filter findings and inspect Details. Any roster correction happens in the source spreadsheet outside CrewCheck. Upload the corrected file as a new snapshot to compare results.'),
- h('Manager journey'),
- p('Choose Manager in the same browser workspace to see both scheduler and manager records. Reopen a saved check, inspect its original evidence, review audit events, or publish a threshold version with a reason. New uploads capture the new rules; existing previews and runs keep their earlier version.'),
- h('State transitions'),
- p('Invalid input creates no saved upload or run. An accepted upload becomes a stored preview. A successful check creates one saved result. A preview can remain without a run if the user leaves; there is no draft browser or scheduled draft cleanup. The app provides no acknowledgement or resolution state for findings.'))
 
-page('5 Roster upload',
- steps('Open the public demo and select Explore as Scheduler. The starting page is Load a roster.',
- 'Download CSV or Excel from the starter card. For the meeting, use sample_roster.csv or sample_roster.xlsx.',
- 'Choose Browse files and select the downloaded file, or drag it into the upload area.',
- 'Review filename, duty and crew counts, UTC timestamps and rule version. The preview shows up to 20 rows; the checker uses the complete accepted upload.',
- 'Choose Run roster check. The app saves and displays the result.'),
- fig('upload.png','Figure 3  Actual scheduler upload screen',6.5),
- p('Use the file picker for the meeting demonstration. Or load sample directly is a convenience shortcut. If validation fails, correct the reported rows in the source file and upload again. No partial check runs on an invalid file.'),
- p('Select the roster worksheet when prompted, match source columns to the required fields, and confirm the source time zone for Excel dates or unzoned timestamps. Review the normalized preview before checking.'))
+# --------------------------------------------------------------------------- content
 
-page('6 Findings and evidence',
- p('The result page shows duties checked, flagged duties, total findings and crew count. A duty can have multiple findings, so findings and flagged duties are separate measures. Users can filter to flagged duties, search crew or duty ID, and filter by crew role.'),
- table(['Sample duty','Evidence','Initial policy finding'],[
- ['D101','14 hours of duty','Above 12-hour maximum'],['D103','7 hours between D102 and D103','Below 10-hour minimum rest'],['D104','Expiry at 12:00 UTC; duty ends at 16:00 UTC','Certification expires before duty end']], [1.0,2.8,3.0]),
- h('How to read the details'),
- p('Open Details on D103. D102 ends on 9 November at 23:00 UTC and D103 starts on 10 November at 06:00 UTC. The calculated interval is seven hours. The drawer compares that value with the ten-hour minimum and identifies REST_MIN and rule version 1.'),
- fig('evidence-detail.png','Figure 4  Actual insufficient-rest evidence',2.65),
- p('The full drawer also identifies the source row, check ID, engine version and source hash. Missing certification is incomplete evidence, not proof of an expired certificate. No flags means only that the configured checks found no issue; first-duty rest and other unimplemented rules remain outside coverage.'))
+page("CrewCheck project handbook",
+     p("MVP implementation and review guide"),
+     p(f"Version {VERSION}  |  {DATE}  |  Stakeholder review"),
+     p("CrewCheck reviews crew rosters against explicit rules, shows the evidence behind each finding and keeps every result with the rule version that produced it. This handbook explains the current application from first use through technical handover."),
+     p("The application is ready for fictional-data review. Operational use depends on an approved rulebook, authoritative roster and qualification data, company sign-in and an agreed operating model."),
+     h("Review topics"),
+     table(["Requested topic", "Handbook section"], [
+         ["Proposed user workflow", "4  User workflow"],
+         ["How a scheduler uploads a roster", "5  Roster upload"],
+         ["How violations are displayed", "6  Findings, evidence and timeline"],
+         ["How managers view historical flags and uploads", "7  History and import log"],
+         ["How rules and thresholds are configured", "8  Rule builder"],
+         ["Outstanding risks or unresolved questions", "18  Decisions and handover"]], [4.6, 2.2]),
+     h("Reading guide"),
+     p("Sections 2–8 cover scope, architecture and user tasks. Sections 9–12 specify data, rules, storage and API behaviour. Sections 13–17 cover installation, Docker and databases, verification, operations and the internal deployment plan."),
+     h("What changed in version 2.0"),
+     p("The separately hosted demo was retired; the FastAPI application is now the single implementation. New since 1.4: a crew timeline, display time zones, a manager rule builder with impact preview, an import log that keeps rejected files and original uploads, automatic daylight-saving handling, a database layer that runs on SQLite or PostgreSQL, and Docker packaging."))
 
-page('7 History and audit review',
- steps('Switch role and choose Explore as Manager in the same browser.',
- 'Open Check history. Search by filename or filter by check creation date in UTC, then choose Apply filters.',
- 'Select View check to reopen the original result, captured rules and evidence.',
- 'Open Audit trail to inspect recorded upload, check, rule-version and demo-role events.'),
- fig('history.png','Figure 5  Actual manager history screen',6.6),
- p('History displays 25 checks per page. Filters use the time the check ran, not the dates of the duties. The manager sees all records in the current visitor workspace. Scheduler access remains limited to scheduler-owned records.'),
- p('Completed results remain unchanged after threshold updates. Re-uploading the same file produces a new upload and can produce a separate comparison run; repeating Run on one upload returns its existing result.'),
- p('The audit view shows the latest 100 events. It is an application action history, not an exhaustive log of every view or a tamper-proof store. Demo actor roles are not verified employee identities. Export, acknowledgement, assignment and resolution workflows are not implemented.'))
+page("2 Scope and access",
+     p("CrewCheck accepts CSV and Excel rosters, validates them, shows a preview, runs deterministic checks and keeps per-duty evidence, the result history and the rule versions. A person reviews the findings and decides what to do next."),
+     table(["Capability", "Scheduler", "Manager"], [
+         ["Upload and check CSV or XLSX", "Yes", "Yes"],
+         ["Read results, table and timeline", "Own checks", "All checks"],
+         ["Import log and original files", "Own attempts", "All attempts"],
+         ["Read the active rule set", "Yes", "Yes"],
+         ["Build rules, preview impact, save versions", "No", "Yes"],
+         ["Edit a roster or resolve a flag in the app", "No", "No"]], [3.3, 1.65, 1.85]),
+     h("Ways to run it"),
+     table(["Setup", "Application and data", "Sign-in"], [
+         ["Local", "FastAPI with a SQLite file", "Two seeded demo accounts"],
+         ["Docker", "Same image; SQLite or PostgreSQL; data in volumes", "Two seeded demo accounts"],
+         ["Planned internal server", "Same application on PostgreSQL", "Company authentication and assigned roles"]], [1.65, 2.75, 2.4]),
+     h("Excluded from this MVP"),
+     p("PDF, DOCX, legacy .xls and macro-enabled workbooks are outside input scope. The app does not edit schedules, notify crew, assign remediation, approve exceptions or use an LLM. It is not an implementation of a specific aviation regulation, does not merge duty history across uploads and does not hold a full qualification registry."))
 
-page('8 Threshold configuration',
- p('Managers configure a rule name, maximum duty hours, minimum rest hours and whether certification must remain valid through duty start or duty end. A change reason is required. Schedulers can read active settings but cannot publish changes.'),
- fig('rules-form.png','Figure 6  Actual configuration form and version history',6.6),
- table(['Setting','Initial value','Allowed configuration'],[
- ['Maximum duty','12 hours','1–24 hours'],['Minimum rest','10 hours','1–48 hours'],['Certification assessment','Duty end','Duty start or duty end'],['Rule name and change reason','Illustrative MVP rules','Name 3–80 characters; reason 5–400']], [2.0,1.8,3.0]),
- p('Save new version records the actor, timestamp and reason. The API checks expected_version and returns a conflict if another change won first. Reload and review the current values before retrying. The hosted demo supports 100 rule versions.'),
- p('Meeting comparison: set duty to 16 hours, rest to 8 hours and certification to duty start, then upload the same starter again. The new run has one finding; the earlier version 1 run retains three. These are demonstration settings, not approved operational limits.'))
+page("3 System architecture",
+     p("One FastAPI process serves the browser interface, the JSON API and the project documentation. The browser and API share an origin; no other services are required."),
+     fig("architecture.png", "Figure 1  Components inside the application process and its storage", 6.8),
+     p("The request layer enforces request size, trusted host names, same-origin writes, sessions, CSRF tokens and roles. The parser, rule engine and timeline are pure functions: they never read or write storage, which keeps findings reproducible and testable. All SQL lives in the repository module, and original files go through the file store."),
+     h("Request lifecycle"),
+     steps("Upload a file. The server stores its bytes by SHA-256 and records the attempt in the import log, whether or not the file is valid.",
+           "The parser validates every row and normalizes times to UTC. If it needs a worksheet, column mapping or source time zone it asks for them; invalid rows reject the whole file.",
+           "An accepted file is saved as normalized rows together with the active rule version, then shown as a preview.",
+           "Run the check. The engine applies that rule version and the result is saved once; repeating the request returns the same result.",
+           "Later views read the saved result. New rule versions apply only to new uploads."))
 
-page('9 Input contract',
- p('Upload UTF-8 CSV or Excel .xlsx. Select a roster worksheet from multi-sheet files. Map different source column names to the six required fields. Additional columns are ignored. There is no fixed row ceiling; blank rows do not count as duties.'),
- table(['Column','Requirement and meaning'],[
- ['crew_id','Required. Stable identifier within the file, for example C001.'],['crew_name','Required. Consistent for a crew_id within the file.'],['role','Required. Exactly pilot or cabin.'],['duty_id','Required. Unique together with crew_id within the file.'],['duty_start','Required date and time; Excel date cells are supported.'],['duty_end','Required timestamp strictly after duty_start.'],['certification_expires_at','Optional column and value. Missing expiry creates a missing-evidence finding.']], [2.45,4.35]),
- h('Timestamp and cell requirements'),
- p('Use Excel date/time cells or ISO-style text. When a value lacks an offset, choose its source zone, such as UTC or America/New_York. Explicit offsets retain their meaning. Named zones account for clock changes; ambiguous or nonexistent local times require an explicit offset in the affected cell. The preview displays UTC.'),
- p('Crew name and role must remain consistent within a crew_id. Unmapped notes are ignored. Row numbers refer to the selected source sheet. Selected sheet and time zone remain with saved rows. Missing required values, duplicate duties and invalid periods still require correction.'),
- h('Deployment capacity'),
- p('File-size, archive and storage budgets protect the deployment; they are not customer requirements or aviation rules. The file-byte budget is configurable with CREWCHECK_MAX_UPLOAD_BYTES. Current snapshot storage and synchronous processing still have finite capacity. Production volume needs representative files and load testing. Formulas in the selected sheet require values; macros and unsupported archives are not processed.'))
+page("4 User workflow",
+     fig("workflow.png", "Figure 2  Upload and check sequence (solid: request, dashed: response)", 6.6),
+     h("Scheduler journey"),
+     p("Sign in as Scheduler and open Load roster. Choose a file; answer the worksheet, column or time-zone questions if asked; review the preview and run the check. Filter findings, switch between Table and Timeline, and open Details for evidence. Correct the roster in the source spreadsheet and upload it again to compare."),
+     h("Manager journey"),
+     p("Sign in as Manager to see every scheduler's checks and upload attempts. Reopen any saved check with its original evidence and rules, download an original file from the import log, and build or adjust rules. Preview a draft against a saved check, then save it as a new version with a reason."),
+     h("States"),
+     p("Every upload attempt is logged as accepted, rejected or needs setup. Only an accepted upload becomes a preview; a successful check creates exactly one result. A preview can remain unchecked if the user leaves. Findings have no acknowledgement or resolution state."))
 
-page('10 Deterministic check semantics',
- p('The checker compares normalized instants using actual elapsed time. It uses the unrounded calculated values for decisions and rounds displayed hour values separately. It sorts duties by start and end for each crew member and tracks the latest-ending prior duty, including nested overlaps.'),
- table(['Rule code','Flag condition','Boundary'],[
- ['DUTY_LIMIT','Duty duration exceeds max_duty_hours','Equality passes'],['REST_MIN','Non-negative gap below min_rest_hours','Equality passes'],['DUTY_OVERLAP','Next start precedes latest prior end','No separate rest flag for that gap'],['CERT_EXPIRED','Supplied expiry precedes the selected assessment instant','Equality passes'],['CERT_MISSING','Expiry value is blank','Incomplete evidence']], [1.65,3.45,1.7]),
- h('Coverage limits'),
- p('Rest before each crew member’s first duty cannot be assessed without earlier duties in the same file. Stored history is not merged into new checks. The checker has no cumulative duty windows, report-time tables, acclimatization model, augmented-crew rules or approved exception logic.'),
- p('One expiry field demonstrates evidence handling. It does not establish required licenses, aircraft qualification, recurrent training or revocation. The same illustrative policy applies to pilot and cabin roles. No approved regulatory profile has been implemented.'),
- h('Reproducibility'),
- p('A saved result retains normalized rows, findings, summary, coverage note, engine version, file hash and rule snapshot. The same normalized input and policy produce the same findings within the checker version. Historical results are retrieved rather than recalculated. A changed engine requires explicit regression review; old results should remain intact.'),
- p('Implementation: hosted/lib/checker.mjs and app/engine.py. Shared synthetic fixtures check equivalence for the included scenarios; they do not prove equivalence for every possible input.'))
+page("5 Roster upload",
+     steps("Open Load roster. Drop a CSV or Excel file on the upload area, choose Browse files, or use the sample roster.",
+           "If asked, choose the worksheet, match source columns to the required fields, or confirm the source time zone, then continue.",
+           "Review the file name, duty and crew counts, the first 20 normalized rows and the rule set that will apply.",
+           "Choose Run roster check. The result is saved and displayed."),
+     fig("upload.png", "Figure 3  Upload preview with the rule set that will be applied", 6.5),
+     p("If validation fails, the message lists each row and problem. Correct the source file and upload again; nothing is checked from an invalid file. The attempt and its file stay in the import log."),
+     h("Daylight-saving times"),
+     p("Local times in a named zone use the correct offset for their date. A time inside a clock change (repeated in autumn, skipped in spring) is resolved to the stricter reading: earliest duty start, latest duty end and earliest certification expiry. The preview warns about adjusted rows and each row's details explain the adjustment. An explicit offset in the cell always wins."))
 
-page('11 Storage and audit model',
- table(['Hosted table','Stored data and purpose'],[
- ['demo_workspaces','Workspace ID, hashed browser capability, expiry, selected role, CSRF token and active rule version.'],['demo_rule_versions','Workspace and version with immutable policy JSON, reason, actor and time. Unique workspace/version pair.'],['demo_uploads','Owner role, filename, normalized rows, source SHA-256 and captured rule version.'],['demo_runs','Saved result JSON, upload reference, owner and creation time. Unique upload_id.'],['demo_audit_events','Workspace, actor role, action, target, timestamp and contextual details.']], [2.2,4.6]),
- h('Record lifecycle and guarantees'),
- p('Accepted uploads store normalized content and a hash; original source bytes are discarded. Results and policies have no application update/delete operation. D1 batches commit successful mutations and their corresponding audit events together. Unique run upload references support repeat requests without another result or check event.'),
- p('Relationships use IDs and application-level workspace checks. The hosted schema has indexes and uniqueness constraints but does not currently declare foreign keys. PostgreSQL migration must add and verify relational constraints rather than assume they already exist.'),
- h('Recorded actions'),
- p('demo.created initializes a workspace and its two seed checks. demo.role_selected and demo.role_left record role changes. roster.uploaded records filename, row count, policy, source hash and import choices. roster.checked records the upload, version and finding count. rules.version_created records prior/new versions and the reason. Seed history is identified by the workspace creation event, not individual historical upload/check events.'),
- p('Workspace access lasts seven days from creation. Automatic record deletion, archival and draft cleanup are not implemented. Application immutability is not protection against a privileged database administrator. The local reference retains uploads, runs and policy versions, but has no equivalent general audit-event table.'))
+page("6 Findings, evidence and timeline",
+     p("The result page shows duties checked, flagged duties, findings and crew count. A duty can have several findings, so flagged duties and findings are counted separately. Search by crew or duty ID, filter by role or show only flagged duties; the filters apply to both the table and the timeline."),
+     table(["Sample duty (sample_roster.csv)", "Evidence", "Finding with initial rules"], [
+         ["D101", "14 hours of duty", "Above the 12-hour maximum"],
+         ["D103", "7 hours between D102 and D103", "Below the 10-hour minimum rest"],
+         ["D104", "Expiry 12:00 UTC; duty ends 16:00 UTC", "Certification expires before duty end"]], [1.9, 2.6, 2.3]),
+     h("Reading the evidence"),
+     p("Details shows the observed and expected values, the times and duties involved, the rule code and version, the check ID, engine version and source file hash. For D103, D102 ends at 23:00 UTC on 9 November and D103 starts at 06:00 UTC on 10 November: 7 hours against a 10-hour minimum."),
+     fig("evidence-detail.png", "Figure 4  Evidence for D103", 2.6),
+     p("Times appear in the display time zone chosen in the top bar (the browser's zone by default) with the stored UTC value underneath. Missing certification is incomplete evidence, not proof of expiry; no flags means only that the configured rules found nothing."))
 
-page('12 Hosted API reference',
- p('The browser uses same-origin JSON APIs, except multipart file upload. A workspace cookie scopes records. Mutation endpoints other than role selection require X-CSRF-Token from the identity response. The API rejects cross-origin or cross-site writes. Authentication inputs differ in the local reference.'),
- table(['Method and path','Contract'],[
- ['POST /api/auth/login','JSON role: scheduler or manager. Returns demo identity and csrf.'],['GET /api/auth/me','Read current demo identity.'],['POST /api/auth/logout','Leave role; retain workspace for later role switching.'],['POST /api/uploads','Multipart file and optional JSON options for sheet, columns and zone. Returns 201 with preview and rules; 422 import_options requests missing choices.'],['POST /api/uploads/{id}/check','Run or retrieve the one result for that upload.'],['GET /api/runs','q, from_date, to_date and offset. Returns items, total, offset and limit 25.'],['GET /api/runs/{id}','Read authorized complete result snapshot.'],['GET /api/rules','Read active policy.'],['GET /api/rules/history','Manager only. Latest 100 policy versions.'],['POST /api/rules','Manager only. expected_version, name, reason, max_duty_hours, min_rest_hours, certification_at.'],['GET /api/audit','Manager only. Latest 100 action events.'],['GET /api/health','Public route with status and storage mode. Not a database read probe.']], [2.65,4.15]),
- h('Errors and caller behavior'),
- p('401: select a role again. 403: permission, origin or CSRF failure. 404: resource absent or outside access scope. 409: rule version conflict. 413: request exceeds limit. 422: file, field or demo-limit validation failure. 500/503: server or database-binding problem. Errors contain detail; roster errors also contain row/message entries. Import setup responses contain import_options; supply the requested choices before retrying.'),
- p('GET /api/templates/csv or /xlsx redirects to a sample after access validation. Public /samples/ downloads require no role. No API exists for roster editing, source-file retrieval, finding resolution or bulk audit export.'))
+page("6 Findings, evidence and timeline (continued)",
+     h("Timeline"),
+     p("Timeline shows one row per crew member on a calendar. Bars are coloured by status (no flags, needs review, incomplete evidence); short rest and overlaps are hatched; each day header shows its finding count, and crew with the most findings come first. It fits the page by default and can be zoomed. Day columns follow the display time zone, so a daylight-saving day is 23 or 25 hours long. Select a bar to open its evidence."),
+     fig("timeline.png", "Figure 5  Timeline for review_roster.csv", 6.8),
+     p("In this example Blake Sample has a long duty followed by short rest (hatched), and Cameron Sample has two overlapping duties, drawn on separate rows with the overlap marked."))
 
-page('13 Local reference setup',
- p('Use this path to run the retained FastAPI implementation on a local computer. It uses its own SQLite file and demo accounts. It does not reproduce the hosted browser-workspace identity model or hosted audit-event API.'),
- h('Prerequisites and startup'),
- p('Python 3.11 or later and uv are required. The lockfile defines Python dependencies. Node is optional for UI syntax checks and diagram regeneration. Run from the project directory:'),
- code('uv sync --frozen\n./scripts/run.sh'),
- p('Open http://127.0.0.1:8000. The start script binds to localhost. Open /documentation for the project guide and /openapi.json for the local API schema. Stop the process with Ctrl+C.'),
- table(['Role','Email','Initial demo password'],[
- ['Scheduler','scheduler@crewcheck.local','SchedulerDemo!2026'],['Manager','manager@crewcheck.local','ManagerDemo!2026']], [1.1,3.2,2.5]),
- h('Configuration'),
- table(['Variable','Meaning'],[
- ['PORT','Default 8000; choose another port if occupied.'],['CREWCHECK_DB','SQLite path. Default data/crewcheck.db.'],['CREWCHECK_SCHEDULER_PASSWORD','Initial seed password only.'],['CREWCHECK_MANAGER_PASSWORD','Initial seed password only.'],['CREWCHECK_SECURE_COOKIE','Set to 1 only with HTTPS. Default local HTTP uses 0.']], [3.15,3.65]),
- p('Export environment values in the shell. The application does not automatically load .env files. Password overrides apply only when accounts are first seeded; they do not rotate existing passwords. These public demo accounts are not suitable for shared production access.'),
- code('PORT=8001 CREWCHECK_DB=data/meeting-demo.db ./scripts/run.sh'),
- p('Use a new database path for an isolated local demonstration instead of deleting prior history. Local sessions last eight hours. Account provisioning, password recovery and company SSO are not implemented.'))
+page("7 History and import log",
+     h("Check history"),
+     p("Check history lists saved checks, 25 per page, newest first, with file, time, uploader, duty and finding counts and the rule version used. Search by file name or filter by the UTC date the check ran (not the duty dates). View check reopens the saved result exactly as it was produced; results are never recalculated."),
+     fig("history.png", "Figure 6  Manager view of check history", 6.4),
+     p("Repeating Run on one upload returns its existing result. Uploading the same file again creates a new attempt and can produce a separate comparison check."))
 
-page('14 Hosted setup and release',
- p('The hosted implementation is in hosted/. Use Node 22.13 or later, npm and the checked-in package-lock.json. The install wrapper handles the project’s execution environment. Start from hosted/:'),
- code('npm run install:ci\nnode --test tests/*.test.mjs\nnpx tsc --noEmit\nnpm run build'),
- h('First local D1 initialization'),
- p('The build generates dist/server/wrangler.json with the DB binding. For a new, empty local D1 state only, apply the initial schema before starting the preview. The following command targets local storage, not the public database:'),
- code('npx wrangler d1 execute DB --local \\\n  --config dist/server/wrangler.json \\\n  --persist-to .wrangler/state \\\n  --file drizzle/0000_absurd_doctor_strange.sql\nnpm start -- --port 8788'),
- p('Open http://127.0.0.1:8788. Reuse the same state directory on restart. Do not replay the initial SQL on existing tables. The schema filename and command apply to this documented baseline. Later schema evolution requires a tracked migration sequence. Stop a preview before rebuilding its generated assets, then restart it.'),
- h('Managed public publication'),
- steps('Use the existing Sites project identified in .openai/hosting.json and the Sites source/publish workflow.',
- 'Run tests, type checks and the production build. Prepare the exact source revision and included SQL migrations.',
- 'Publish through the hosting workflow, which applies production schema changes. Do not run the local initialization command against production.',
- 'Verify role entry, history, a fictional upload, findings and audit persistence. Record the deployment ID and source commit.'),
- p('Current publication metadata, source commit and deployment ID are in outputs/publication.json. Keep secrets, .wrangler runtime state, local databases, dependencies and environment files out of source archives. Rollback and schema compatibility require an operator-reviewed plan; this MVP has no automated rollback procedure.'))
+page("7 History and import log (continued)",
+     h("Import log"),
+     p("Import log lists every upload attempt with its status: Accepted (with duty count and a link to the check), Rejected (expand to see each row error) or Needs setup (which choice was missing). Original file downloads the exact bytes that were uploaded; identical files are stored once. Schedulers see their own attempts; managers see all."),
+     fig("import-log.png", "Figure 7  Import log with a rejected file and its error", 6.4))
 
-page('15 Verification and acceptance',
- p('Verification on 6 November 2026: 27 local Python tests and 14 hosted tests passed, including import setup, 6,001 parsed duties, a saved 601-duty check and daylight-saving edge cases. TypeScript checks and the hosted production build passed. The local suite emitted a dependency deprecation warning. The Node runner identified node:sqlite as experimental. Neither warning failed a test.'),
- table(['Command','Evidence covered'],[
- ['uv run pytest -q','Local parsing, boundaries, roles, CSRF, versions, repeat checks and restart persistence.'],['node --test tests/*.test.mjs','Hosted fixture parity, CSV/XLSX agreement, API access, workspace isolation, audit events and rule snapshots.'],['npx tsc --noEmit','Hosted type checks.'],['npm run build','Hosted production bundle generation.']], [2.65,4.15]),
- p('Hosted API tests use an in-memory SQLite adapter, not a live D1 service. Passing fixture parity does not prove all-input parity, operational suitability or concurrent production capacity. No load test, PostgreSQL migration test or disaster-recovery rehearsal has been completed.'),
- h('Repeatable meeting acceptance walkthrough'),
- steps('Start with a fresh demo workspace and initial rules. Download and upload sample_roster.csv through Browse files. Confirm six duties and four crew.',
- 'Run the check. Confirm three findings affecting three duties. Open D103 and verify seven hours of rest against ten hours.',
- 'Switch to Manager in the same browser. Reopen the scheduler run in history and inspect audit entries.',
- 'Save a policy version with duty 16, rest 8 and certification at start. Re-upload the starter. Confirm one finding under the new version and three on the old run.',
- 'Upload input_errors.csv. Select UTC for its unzoned timestamp, then confirm the invalid duration prevents checking.'),
- table(['Fixture pair','Expected with initial rules'],[
- ['sample_roster.csv / .xlsx','6 duties, 4 crew, 3 findings'],['review_roster.csv / .xlsx','25 duties, 8 crew, 6 findings'],['clean_roster.csv / .xlsx','24 duties, 8 crew, 0 configured findings'],['input_errors.csv / .xlsx','Rejected before checking']], [3.35,3.45]),
- p('Actual browser checks covered role selection, file download and upload, preview, findings, evidence, manager history, audit and threshold versioning. These checks used fictional data.'))
+page("8 Rule builder",
+     p("Managers build rules without code. Each rule is a sentence assembled from fixed, tested parts, and the sentence is shown under the rule as it is edited. Schedulers can read the active rule set but cannot change it."),
+     table(["Part", "Choices"], [
+         ["Who", "All crew, pilots or cabin crew"],
+         ["Only duties that…", "Start, end or touch a daily time window; start on chosen weekdays; belong to listed crew IDs (up to five conditions, all must match)"],
+         ["Measure", "Duty hours, number of duties, rest before the next duty, overlap with the next duty, consecutive duty days, certification validity left"],
+         ["Checked", "For each duty, on any calendar day, in any rolling window of N days, after each duty, or in a row"],
+         ["Must be", "At most, less than, at least or more than a limit"],
+         ["Local time zone", "Zone used for time windows, weekdays and calendar days"]], [1.7, 5.1]),
+     fig("rule-card.png", "Figure 8  A night-duty rule built from the parts above", 5.4),
+     h("Templates"),
+     p("Add rule offers templates for the four built-in rules and for duty hours in any 7 or 28 days, duties on one calendar day, consecutive duty days, a night duty limit, rest after a night duty and a 30-day certification margin. Every value can be changed after adding."))
 
-page('16 Operations and troubleshooting',
- h('Current operating boundaries'),
- p('The public demo isolates visitors by a hashed random capability in an HttpOnly cookie, Secure over HTTPS and SameSite=Lax. Role selection is not employee authentication. A cookie loss or another device means a different workspace. Access expires after seven days without automatic data erasure.'),
- p('Per-workspace caps are 30 uploads, including two seed checks, and 100 rule versions. The API caps serialized results at 1.5 million bytes. These controls bound normal demo use; they are not a documented global abuse, availability or performance guarantee. No scheduled cleanup, alerting policy or operational service-level target is configured.'),
- table(['Symptom','Action'],[
- ['Missing history','Check browser workspace, selected role and date filters. Dates refer to check creation in UTC.'],['File rejected','Select the roster sheet, map required fields and supply its source zone. Correct any row errors. Replace formulas in the selected sheet with values.'],['Session or 403 error','Refresh, choose the role again and retry from the same origin.'],['409 while saving rules','Reload settings, review the latest version and enter the intended change again.'],['Old result has old findings','Expected. Upload again to capture a new policy version.'],['Workspace upload cap','Use another fictional-data browser workspace for a new demo. Existing records remain in their original workspace.'],['Local port in use','Choose another port; leave unrelated processes running.']], [2.05,4.75]),
- h('Backups and incident handling'),
- p('For the local reference, use SQLite’s online backup API or stop the app cleanly before copying database state. Do not copy only the main database file while a WAL writer is active. Backup automation, retention, restore testing and hosted database export procedures remain to be assigned and implemented.'),
- p('For a failed request, record the timestamp, route, non-sensitive error and deployment version. Do not place real roster data or credentials in diagnostic reports. Check the DB binding and server error logs. /api/health reports the route and configured mode; it does not prove database availability. Use a non-sensitive read plus a controlled fictional-data check to verify persistence.'))
+page("8 Rule builder (continued)",
+     fig("rule-impact.png", "Figure 9  Impact preview of two draft rules against a saved check", 5.6),
+     h("Preview and save"),
+     p("Preview applies the draft rules to a saved check without saving anything and shows how many findings are added or removed, the count per rule and examples of new findings. Save new version requires a reason and records who saved it and when."),
+     p("If another manager saved first, the save is refused with a conflict; reload and reapply the change. Existing checks keep the rules they were run with, and an open preview keeps the version it captured. Invalid input is reported per rule and field, for example a rolling window without a number of days."),
+     p("Rules are stored as data and evaluated by the engine; nothing a manager enters is executed as code. A new kind of measure or condition is a development change with its own tests."))
 
-page('17 PostgreSQL internal deployment plan',
- p('The current demo stores audit history in SQLite-based D1. PostgreSQL is the intended internal-server target. There is no implemented PostgreSQL adapter, provisioned internal environment or completed data migration in this baseline.'),
- h('Planned sequence'),
- steps('Confirm the internal application runtime, network boundary, company authentication provider, team permissions and approved rule definitions.',
- 'Replace visitor workspaces and selectable roles with authenticated organization/user membership. Associate audit records with stable employee actor IDs.',
- 'Implement a PostgreSQL persistence adapter for upload, policy, result and audit operations. Add migrations, foreign keys, uniqueness constraints and transactions.',
- 'Map ISO timestamps to timestamptz and structured snapshots to jsonb where appropriate. Preserve record IDs, source hashes and rule references.',
- 'Restrict the application audit role to required insert/select operations. Define retention, archival, deletion, backups and restore objectives.',
- 'Re-run parser/engine parity, authorization, conflict and idempotence tests against PostgreSQL. Add concurrency and migration reconciliation checks.',
- 'Rehearse backup and restore, agree cutover and rollback conditions, then validate the internal pilot with approved fictional or authorized test data.'),
- h('Migration acceptance criteria'),
- p('Reconcile IDs, counts, hashes and rule references before and after transfer. Do not recompute historical findings during migration. Demonstrate that old checks remain identical, new rules affect only new uploads, unauthorized users cannot read another team’s records, and repeating a check does not duplicate its result or audit event.'),
- p('Public demo records are fictional and its actors are unverified roles. Decide whether to discard those demo records from the internal rollout or retain them in an explicitly labeled test dataset. Do not convert demo actor names into asserted employee identities.'),
- h('Decisions required for operations'),
- p('Assign ownership for application releases, approved rule changes, data retention, security, backups and support. Determine recovery point and recovery time targets. Evaluate stronger tamper evidence only if the audit policy requires it; application-level append-only behavior alone is insufficient.'))
+page("9 Input contract",
+     p("Upload UTF-8 CSV or Excel .xlsx. Choose the worksheet in multi-sheet files and map differently named columns to the fields below; other columns are ignored. There is no fixed row limit and blank rows are skipped."),
+     table(["Column", "Requirement and meaning"], [
+         ["crew_id", "Required. Stable identifier within the file, for example C001."],
+         ["crew_name", "Required. Consistent for a crew_id within the file."],
+         ["role", "Required. pilot or cabin (any letter case)."],
+         ["duty_id", "Required. Unique together with crew_id within the file."],
+         ["duty_start", "Required date and time; Excel date cells are supported."],
+         ["duty_end", "Required, strictly after duty_start."],
+         ["certification_expires_at", "Optional. A missing value creates a missing-evidence finding."]], [2.45, 4.35]),
+     h("Timestamps"),
+     p("Use Excel date/time cells or ISO-style text such as 2026-11-09 06:00 or 2026-11-09T06:00:00+09:00. Values without an offset need a source zone (for example UTC, Asia/Seoul or +09:00). Daylight-saving changes are handled as described in section 5. Times are stored in UTC."),
+     h("Validation and capacity"),
+     p("Rows are rejected for missing required values, duplicate duties, inconsistent crew name or role, invalid periods, text over 160 characters or formulas in the selected sheet; up to 50 errors are reported. The upload size limit (default 5 MB, CREWCHECK_MAX_UPLOAD_BYTES) and workbook archive limits protect the server; they are not business rules."))
 
-page('18 Decisions and handover',
- table(['Decision to confirm','Effect on the next phase'],[
- ['Which approved rulebook and version apply to each operation and crew role?','Defines actual limits, terminology, cumulative windows and exceptions.'],['What do duty start and end include, and are files complete rosters or revisions?','Defines calculations, prior-duty context and duplicate/revision handling.'],['Which qualification records are authoritative, and which certificates are required?','Replaces the single expiry-field demonstration model.'],['Which SSO provider, teams, manager provisioning and actual user volumes apply?','Defines identity, authorization and deployment sizing.'],['What retention, deletion, source-file preservation and recovery requirements apply?','Defines storage lifecycle and operational controls.'],['Is flag acknowledgement, assignment, remediation or export needed?','Defines whether review evidence becomes a managed case workflow.']], [3.95,2.85]),
- h('Handover package'),
- p('Provide this PDF and editable Word handbook, the nine-slide MVP design review, the public demo link, the fictional CSV/XLSX pack and the source repository. The project includes architecture/user-flow documentation, Mermaid sources, data contracts, tests, lockfiles and a PostgreSQL transition plan.'),
- h('Source map'),
- p('Public UI: hosted/public/static/. Public API and access: hosted/lib/api.mjs. Public parsing: hosted/lib/parse-upload.mjs. Checking: hosted/lib/checker.mjs. Schema: hosted/db/schema.ts and hosted/drizzle/. Tests: hosted/tests/ and tests/. Local reference: app/. Samples: samples/. Release record: outputs/publication.json. Presentation reference: presentation/manifest.json.'),
- h('Document maintenance'),
- p('Update this handbook whenever schema, API, access, rule semantics, limits or deployment behavior changes. Record the source revision and verification date. Re-run relevant checks, regenerate the handbook with scripts/build_handbook.py, and inspect the rendered pages. Assign a maintainer during handover; no production service owner has yet been nominated.'),
- p('Meeting outcome sought: confirm the proposed workflow and identify the rulebook, data contract and internal operating requirements needed for the next implementation phase.'))
+page("10 Check semantics",
+     p("The engine compares UTC instants using actual elapsed time, so durations across clock changes are correct. Duties are ordered per crew member by start and end, and rest is measured from the latest-ending earlier duty, which also handles nested overlaps. Decisions use unrounded values; displayed hours are rounded."),
+     table(["Built-in rule", "Flag condition", "Boundary"], [
+         ["DUTY_LIMIT", "Duty longer than the maximum (initially 12 h)", "Equal passes"],
+         ["REST_MIN", "Non-negative gap shorter than the minimum (initially 10 h)", "Equal passes"],
+         ["DUTY_OVERLAP", "Next duty starts before the latest earlier duty ends", "Reported instead of rest"],
+         ["CERT_EXPIRED", "Expiry before duty end (or start, if chosen)", "Equal passes"],
+         ["CERT_MISSING", "No expiry value", "Incomplete evidence"]], [1.6, 3.5, 1.7]),
+     h("How custom rules are measured"),
+     table(["Measure", "Meaning"], [
+         ["Per calendar day", "Hours are clipped at local midnight in the rule's zone; counts include duties touching that day."],
+         ["Rolling N days", "For each duty, the window ends at its end and covers the previous N days; partial duties are clipped."],
+         ["After each duty", "Conditions select the duty before the rest; the finding is placed on the next duty."],
+         ["In a row", "Consecutive local calendar days with any matching duty."]], [1.8, 5.0]),
+     p("A duty receives at most one finding per rule. Rest before each crew member's first duty in a file is not assessed, and earlier uploads are not merged. No regulatory profile, report-time table, acclimatization model or exception approval is implemented."),
+     h("Reproducibility"),
+     p("A saved result keeps the normalized rows, findings, summary, coverage note, engine version (2.0.0), source hash and rule version. Historical results are read, not recalculated. Rule versions saved in the version 1.x format are converted on read and give the same findings."))
 
-# Reuse the verified presentation diagrams, with their original proportions.
-for name in ['architecture.png', 'workflow.png']:
- if not (ASSETS/name).exists():
-  raise FileNotFoundError(f'Required reviewed handbook asset missing: {ASSETS/name}')
-for name in ['upload.png','evidence-detail.png','history.png','rules-form.png']:
- (ASSETS/name).write_bytes((ROOT/'presentation'/'assets'/name).read_bytes())
+page("11 Storage and data model",
+     table(["Table", "Contents and purpose"], [
+         ["users, sessions, login_attempts", "Demo accounts, 8-hour sessions with CSRF tokens, failed sign-in throttling."],
+         ["rule_versions", "Numbered rule sets with name, reason, author and time. Never updated."],
+         ["uploads", "Normalized rows, file name, source hash, owner and the captured rule version."],
+         ["runs", "Saved result for an upload; one per upload."],
+         ["import_attempts", "Every upload attempt: status, errors, settings, size, hash and link to the upload."],
+         ["alembic_version", "Applied database migration."]], [2.3, 4.5]),
+     h("Database and files"),
+     p("SQLite is the default (data/crewcheck.db); PostgreSQL is used when CREWCHECK_DATABASE_URL is set. All SQL is in app/repository.py, tables are defined in app/schema.py and Alembic migrations in app/migrations run at startup. Databases created by earlier versions are adopted without changes. Times are ISO-8601 UTC text and snapshots JSON text, so saved evidence is identical on either database."),
+     p("Original files are stored once per content hash under data/files/<first two characters>/<hash> (CREWCHECK_FILES). Files over the size limit are logged without their bytes."),
+     h("Guarantees"),
+     p("Rule versions are numbered previous + 1 and protected by the primary key, so two simultaneous saves cannot both succeed. A unique upload reference ensures one result per upload. On SQLite, writes are serialized; on PostgreSQL, the same constraints apply. Results, rule versions and import records have no update or delete operation in the application, which is not protection against a database administrator. No retention or deletion schedule exists yet."))
 
-doc=Document()
-sec=doc.sections[0]
-sec.page_width=Inches(8.5);sec.page_height=Inches(11)
-sec.top_margin=Inches(.62);sec.bottom_margin=Inches(.62)
-sec.left_margin=Inches(.85);sec.right_margin=Inches(.85)
-sec.footer_distance=Inches(.30)
-for style in ['Normal','Body Text','List Number','List Bullet']:
- s=doc.styles[style];s.font.name='Arial';s.font.size=Pt(11)
- s.paragraph_format.space_after=Pt(7);s.paragraph_format.line_spacing=1.08
-for name,size,color in [('Title',28,'000000'),('Heading 1',21,'000000'),('Heading 2',12,'193B50')]:
- s=doc.styles[name];s.font.name='Arial';s.font.size=Pt(size);s.font.color.rgb=RGBColor.from_string(color)
- s.paragraph_format.space_before=Pt(11 if name=='Heading 2' else 0)
- s.paragraph_format.space_after=Pt(9);s.paragraph_format.keep_with_next=True
-doc.core_properties.title='CrewCheck project handbook'
-doc.core_properties.subject='MVP workflow, implementation and handover'
-doc.core_properties.author='CrewCheck project'
-footer=sec.footer.paragraphs[0];footer.alignment=WD_ALIGN_PARAGRAPH.RIGHT
-r=footer.add_run('CrewCheck  |  v1.4  |  ');r.font.size=Pt(8);r.font.color.rgb=RGBColor.from_string('536679')
-field=OxmlElement('w:fldSimple');field.set(qn('w:instr'),'PAGE');footer._p.append(field)
+page("12 API reference",
+     p("The browser uses same-origin JSON APIs (multipart for uploads). Writes require the X-CSRF-Token returned at sign-in, and cross-origin writes are refused."),
+     table(["Method and path", "Contract"], [
+         ["POST /api/auth/login, GET /api/auth/me, POST /api/auth/logout", "Email and password; returns identity and csrf. Ten failed attempts in five minutes return 429."],
+         ["POST /api/uploads", "File plus optional options (worksheet, mapping, timezone). 201 with preview, rules, import_id and dst_adjusted_rows; 422 with errors or import_options."],
+         ["POST /api/uploads/{id}/check", "Run, or return the existing result."],
+         ["GET /api/runs, GET /api/runs/{id}", "History with q, from_date, to_date, offset (25 per page); a saved result."],
+         ["GET /api/runs/{id}/timeline?tz=", "Crew lanes and days in a time zone."],
+         ["GET /api/imports, /api/imports/{id}, /api/imports/{id}/file", "Import log with status and offset; one attempt; the original file."],
+         ["GET /api/rules, /api/rules/history, /api/rules/catalog", "Active rule set; versions (manager); rule building blocks and templates."],
+         ["POST /api/rules/preview, POST /api/rules", "Manager only. Dry run against a saved check; save a new version (409 on conflict)."],
+         ["GET /api/templates/{csv|xlsx}, GET /api/health", "Sample roster download; status."]], [3.0, 3.8]),
+     h("Errors"),
+     p("400: host name not allowed. 401: sign in again. 403: role, origin or CSRF failure. 404: missing or not accessible. 409: rule version conflict. 413: request too large. 422: file, settings or rule validation; the response explains which row or field. Full request and response shapes are in docs/api-contract.md; the generated schema is at /openapi.json."))
 
-def set_table(spec):
- t=doc.add_table(rows=1,cols=len(spec['headers']));t.alignment=WD_TABLE_ALIGNMENT.CENTER;t.autofit=False
- for i,w in enumerate(spec['widths']):t.columns[i].width=Inches(w)
- for i,v in enumerate(spec['headers']):t.rows[0].cells[i].text=v
- for values in spec['rows']:
-  cells=t.add_row().cells
-  for c,v in zip(cells,values):c.text=str(v)
- for ri,row in enumerate(t.rows):
-  trpr=row._tr.get_or_add_trPr();trpr.append(OxmlElement('w:cantSplit'))
-  if ri==0:trpr.append(OxmlElement('w:tblHeader'))
-  for ci,c in enumerate(row.cells):
-   c.width=Inches(spec['widths'][ci]);c.vertical_alignment=WD_CELL_VERTICAL_ALIGNMENT.CENTER
-   pr=c._tc.get_or_add_tcPr()
-   sh=OxmlElement('w:shd');sh.set(qn('w:fill'),'193B50' if ri==0 else ('F0F4F6' if ri%2==0 else 'FFFFFF'));pr.append(sh)
-   margins=OxmlElement('w:tcMar')
-   for side,val in [('top',75),('bottom',75),('left',95),('right',95)]:
-    el=OxmlElement('w:'+side);el.set(qn('w:w'),str(val));el.set(qn('w:type'),'dxa');margins.append(el)
-   pr.append(margins)
-   borders=OxmlElement('w:tcBorders')
-   for side in ['top','left','bottom','right']:
-    el=OxmlElement('w:'+side);el.set(qn('w:val'),'single');el.set(qn('w:sz'),'5');el.set(qn('w:color'),'D9D9D9');borders.append(el)
-   pr.append(borders)
-   for para in c.paragraphs:
-    para.paragraph_format.space_after=Pt(0);para.paragraph_format.line_spacing=1.02
-    for run in para.runs:
-     run.font.name='Arial';run.font.size=Pt(9.7)
-     if ri==0:run.bold=True;run.font.color.rgb=RGBColor(255,255,255)
- doc.add_paragraph().paragraph_format.space_after=Pt(1)
+page("13 Local setup",
+     p("Python 3.11 or later and uv are required; the lockfile pins dependencies. Run from the project directory:"),
+     code("uv sync --frozen\n./scripts/run.sh"),
+     p("Open http://127.0.0.1:8000 and sign in with a demo account. /documentation opens the project guide. Stop with Ctrl+C."),
+     table(["Role", "Email", "Initial demo password"], [
+         ["Scheduler", "scheduler@crewcheck.local", "SchedulerDemo!2026"],
+         ["Manager", "manager@crewcheck.local", "ManagerDemo!2026"]], [1.1, 3.2, 2.5]),
+     h("Configuration"),
+     table(["Variable", "Meaning"], [
+         ["PORT", "Default 8000."],
+         ["CREWCHECK_DB", "SQLite file. Default data/crewcheck.db."],
+         ["CREWCHECK_DATABASE_URL", "Use another database, e.g. postgresql+psycopg://user:pass@host:5432/crewcheck."],
+         ["CREWCHECK_FILES", "Folder for original files. Default: files next to the database."],
+         ["CREWCHECK_ALLOWED_HOSTS", "Host names the server answers to. Default localhost,127.0.0.1."],
+         ["CREWCHECK_SCHEDULER_PASSWORD / _MANAGER_PASSWORD", "Seed passwords, used only when accounts are first created."],
+         ["CREWCHECK_SECURE_COOKIE", "Set to 1 only behind HTTPS."],
+         ["CREWCHECK_MAX_UPLOAD_BYTES", "Upload size limit. Default 5 MB."]], [3.1, 3.7]),
+     p("Export variables in the shell; .env.example lists them but is not loaded automatically. Use a new database path for an isolated demonstration. Account provisioning, password recovery and company SSO are not implemented."))
 
-for i,section in enumerate(PAGES):
- if i:doc.add_page_break()
- doc.add_paragraph(section['title'],'Title' if i==0 else 'Heading 1')
- for kind,v in section['blocks']:
-  if kind=='p':doc.add_paragraph(v)
-  elif kind=='h':doc.add_paragraph(v,'Heading 2')
-  elif kind=='steps':
-   for j,item in enumerate(v,1):
-    para=doc.add_paragraph(f'{j}.  {item}');para.paragraph_format.left_indent=Inches(.15);para.paragraph_format.first_line_indent=Inches(-.15)
-  elif kind=='table':set_table(v)
-  elif kind=='code':
-   para=doc.add_paragraph();para.paragraph_format.space_after=Pt(9)
-   run=para.add_run(v);run.font.name='Courier New';run.font.size=Pt(9)
-  elif kind=='figure':
-   para=doc.add_paragraph();para.alignment=WD_ALIGN_PARAGRAPH.CENTER
-   run=para.add_run();shape=run.add_picture(str(ASSETS/v['file']),width=Inches(v['width']))
-   shape._inline.docPr.set('descr',v['caption'])
-   para.paragraph_format.keep_with_next=True
-   cap=doc.add_paragraph(v['caption']);cap.alignment=WD_ALIGN_PARAGRAPH.CENTER
-   for r in cap.runs:r.font.size=Pt(9);r.font.color.rgb=RGBColor.from_string('536679')
-# Remove inherited Word title borders as well as direct paragraph borders.
-for element in list(doc.styles.element.iter(qn('w:pBdr'))) + list(doc.element.iter(qn('w:pBdr'))):
- element.getparent().remove(element)
-doc.save(OUT/'crewcheck-project-handbook.docx')
-(OUT/'handbook-content.json').write_text(json.dumps(PAGES,indent=2,ensure_ascii=False)+'\n')
-print(f'Created {OUT / "crewcheck-project-handbook.docx"} with {len(PAGES)} sections')
+page("14 Docker and databases",
+     code("docker compose up -d --build                                   # SQLite\n"
+          "docker compose -f compose.yaml -f compose.postgres.yaml up -d --build   # PostgreSQL\n"
+          "docker compose logs -f\n"
+          "docker compose down          # stop; data is kept\n"
+          "docker compose down -v       # stop and delete data volumes"),
+     p("The image runs the application as a non-root user on port 8000 with a health check. The database and original files live in the crewcheck-data volume (/data); with the PostgreSQL override the database is in the crewcheck-postgres volume. Set CREWCHECK_ALLOWED_HOSTS to the server's host name and change the demo passwords before sharing access."),
+     h("Switching databases"),
+     p("Set CREWCHECK_DATABASE_URL (and install the postgres extra outside Docker with uv sync --extra postgres). Migrations create or update tables at startup. Moving existing records between databases is a separate export and import step; it is not automated."),
+     h("Schema changes"),
+     p("Change app/schema.py, then create a migration and review it before committing:"),
+     code("CREWCHECK_DATABASE_URL=sqlite:///data/crewcheck.db uv run alembic revision -m \"describe change\""))
+
+page("15 Verification and acceptance",
+     p("Verification on 10 November 2026: 209 tests passed on SQLite with 100% line and branch coverage, and the same suite passed on PostgreSQL 17. The application was exercised in Chrome and in Docker on both databases, including an existing database created by an earlier version."),
+     table(["Command", "What it covers"], [
+         ["uv run pytest --cov", "Parsing, DST, rules and every rule building block, API access and roles, CSRF, import log, files, timeline, history, migrations and concurrency. Fails below 96% coverage."],
+         ["CREWCHECK_TEST_DATABASE_URL=… uv run pytest", "The whole suite against PostgreSQL, one fresh database per test."]], [2.9, 3.9]),
+     h("Acceptance walkthrough"),
+     steps("Sign in as Scheduler. Upload sample_roster.csv and confirm 6 duties and 4 crew. Run the check: 3 findings on 3 duties. Open D103 and confirm 7 hours of rest against 10.",
+           "Switch to Timeline and confirm the flagged duties and the hatched rest gap.",
+           "Upload samples/edge-cases/04_duplicate_records.csv. Confirm the row 4 error, then find the attempt and its original file in Import log.",
+           "Sign in as Manager. Reopen the scheduler's check from Check history.",
+           "In Rules & thresholds add Duty hours in any 7 days with a 20 h limit, preview it against the review roster check, and save with a reason. Upload again and confirm the new rule appears; the earlier check is unchanged."),
+     table(["Fixture", "Expected with initial rules"], [
+         ["sample_roster.csv / .xlsx", "6 duties, 4 crew, 3 findings"],
+         ["review_roster.csv / .xlsx", "25 duties, 8 crew, 6 findings"],
+         ["clean_roster.csv / .xlsx", "24 duties, 8 crew, 0 findings"],
+         ["input_errors.csv / .xlsx", "Asks for a time zone, then rejected for an invalid duration"],
+         ["edge-cases/06, 07", "Exact boundaries pass; certification boundaries per edge-cases README"]], [3.0, 3.8]))
+
+page("16 Operations and troubleshooting",
+     table(["Symptom", "Action"], [
+         ["Missing history", "Check the signed-in role and the date filters; dates are when the check ran, in UTC."],
+         ["File rejected", "Open Import log for the row errors. Choose the sheet, map columns and give the source zone; replace formulas with values."],
+         ["400 Invalid host", "Add the host name to CREWCHECK_ALLOWED_HOSTS."],
+         ["403 or session error", "Refresh, sign in again and retry from the same address."],
+         ["409 when saving rules", "Reload, review the latest version and enter the change again."],
+         ["Old check shows old findings", "Expected. Upload again to apply the current rules."],
+         ["Unexpected times", "Check the display time zone in the top bar; stored values are UTC."]], [2.05, 4.75]),
+     h("Backups"),
+     p("Back up the database and the files folder together. SQLite: use the online backup API or stop the app before copying; do not copy only the main file while it is running. PostgreSQL: use pg_dump. Docker: back up the crewcheck-data (and crewcheck-postgres) volumes. Backup automation, retention and restore tests are not yet in place."),
+     h("Incidents"),
+     p("Record the time, route, non-sensitive error and version. Do not put real roster data or passwords in reports. /api/health reports that the app is running; use a sign-in and a fictional check to confirm storage."))
+
+page("17 Internal deployment plan",
+     h("Already in place"),
+     p("The application runs on PostgreSQL through the repository layer and migrations, the test suite passes on PostgreSQL, Docker packaging exists and original files are retained in a replaceable file store."),
+     h("Remaining sequence"),
+     steps("Confirm the internal runtime, network boundary, company sign-in provider, teams, permissions and approved rule definitions.",
+           "Replace demo accounts with company authentication and record stable employee IDs as authors of uploads and rule versions.",
+           "Add a migration to timestamptz and jsonb if reporting needs them, keeping saved values identical.",
+           "Decide retention and deletion for records and original files; move files to managed object storage if required.",
+           "Automate backups and rehearse a restore. Load-test with representative roster sizes.",
+           "Validate an internal pilot with fictional or authorized test data, with agreed cutover and rollback conditions."),
+     h("Acceptance criteria"),
+     p("Old checks remain identical, new rules affect only new uploads, users cannot read another team's records, repeated checks do not duplicate results, and record counts, hashes and rule references reconcile after any data transfer. Demo records should be discarded or kept only as a labelled test set."))
+
+page("18 Decisions and handover",
+     table(["Decision to confirm", "Effect on the next phase"], [
+         ["Which approved rulebook and version apply to each operation and crew role?", "Defines the rules managers configure and any new measures needed."],
+         ["What do duty start and end include, and are files complete rosters or revisions?", "Defines calculations, prior-duty context and duplicate handling."],
+         ["Which qualification records are authoritative?", "Replaces the single expiry field."],
+         ["Which sign-in provider, teams and user volumes apply?", "Defines identity, authorization and sizing."],
+         ["How long must records and original files be kept, and how are they deleted?", "Defines storage lifecycle and backups."],
+         ["Is acknowledgement, assignment, remediation or export of findings needed?", "Defines whether findings become a managed workflow."]], [3.95, 2.85]),
+     h("Handover package"),
+     p("This handbook (PDF and Word), the source repository with tests and lockfiles, the fictional CSV/XLSX samples and edge cases, Docker files and the documentation in docs/."),
+     h("Source map"),
+     table(["Area", "Location"], [
+         ["UI", "app/static/"], ["API and access", "app/main.py"], ["Parsing and DST", "app/parsing.py"],
+         ["Rules and engine", "app/ruleset.py, app/engine.py"], ["Timeline", "app/timeline.py"],
+         ["Storage", "app/repository.py, app/schema.py, app/migrations/, app/filestore.py"],
+         ["Tests", "tests/"], ["Samples", "samples/"], ["This handbook", "scripts/build_handbook.py, scripts/capture_handbook_assets.mjs"]], [2.0, 4.8]),
+     h("Maintaining this document"),
+     p("Update this handbook when the API, rules, storage, access or deployment change. Refresh the images with npm run handbook:assets against an empty database, rebuild with uv run --group docs python scripts/build_handbook.py, and review the rendered pages."))
+
+
+# --------------------------------------------------------------------------- Word
+
+def build_docx(path):
+    doc = Document()
+    sec = doc.sections[0]
+    sec.page_width, sec.page_height = Inches(8.5), Inches(11)
+    sec.top_margin = sec.bottom_margin = Inches(.62)
+    sec.left_margin = sec.right_margin = Inches(.85)
+    sec.footer_distance = Inches(.30)
+    for style in ["Normal", "List Number"]:
+        s = doc.styles[style]
+        s.font.name, s.font.size = "Arial", Pt(10.5)
+        s.paragraph_format.space_after, s.paragraph_format.line_spacing = Pt(7), 1.08
+    for name, size, color in [("Title", 28, "000000"), ("Heading 1", 21, "000000"), ("Heading 2", 12, "193B50")]:
+        s = doc.styles[name]
+        s.font.name, s.font.size, s.font.color.rgb = "Arial", Pt(size), RGBColor.from_string(color)
+        s.paragraph_format.space_before = Pt(11 if name == "Heading 2" else 0)
+        s.paragraph_format.space_after, s.paragraph_format.keep_with_next = Pt(9), True
+    doc.core_properties.title = "CrewCheck project handbook"
+    doc.core_properties.subject = "MVP workflow, implementation and handover"
+    doc.core_properties.author = "CrewCheck project"
+    footer = sec.footer.paragraphs[0]
+    footer.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run = footer.add_run(f"CrewCheck  |  v{VERSION}  |  ")
+    run.font.size, run.font.color.rgb = Pt(8), RGBColor.from_string("536679")
+    field = OxmlElement("w:fldSimple")
+    field.set(qn("w:instr"), "PAGE")
+    footer._p.append(field)
+
+    def add_table(spec):
+        t = doc.add_table(rows=1, cols=len(spec["headers"]))
+        t.alignment, t.autofit = WD_TABLE_ALIGNMENT.CENTER, False
+        for i, value in enumerate(spec["headers"]):
+            t.rows[0].cells[i].text = value
+        for values in spec["rows"]:
+            for cell, value in zip(t.add_row().cells, values):
+                cell.text = str(value)
+        for ri, row in enumerate(t.rows):
+            trpr = row._tr.get_or_add_trPr()
+            trpr.append(OxmlElement("w:cantSplit"))
+            if ri == 0:
+                trpr.append(OxmlElement("w:tblHeader"))
+            for ci, cell in enumerate(row.cells):
+                cell.width, cell.vertical_alignment = Inches(spec["widths"][ci]), WD_CELL_VERTICAL_ALIGNMENT.CENTER
+                pr = cell._tc.get_or_add_tcPr()
+                shade = OxmlElement("w:shd")
+                shade.set(qn("w:fill"), "193B50" if ri == 0 else ("F0F4F6" if ri % 2 == 0 else "FFFFFF"))
+                pr.append(shade)
+                margins = OxmlElement("w:tcMar")
+                for side, val in [("top", 75), ("bottom", 75), ("left", 95), ("right", 95)]:
+                    el = OxmlElement("w:" + side)
+                    el.set(qn("w:w"), str(val))
+                    el.set(qn("w:type"), "dxa")
+                    margins.append(el)
+                pr.append(margins)
+                borders = OxmlElement("w:tcBorders")
+                for side in ["top", "left", "bottom", "right"]:
+                    el = OxmlElement("w:" + side)
+                    el.set(qn("w:val"), "single")
+                    el.set(qn("w:sz"), "5")
+                    el.set(qn("w:color"), "D9D9D9")
+                    borders.append(el)
+                pr.append(borders)
+                for para in cell.paragraphs:
+                    para.paragraph_format.space_after, para.paragraph_format.line_spacing = Pt(0), 1.02
+                    for r in para.runs:
+                        r.font.name, r.font.size = "Arial", Pt(9.5)
+                        if ri == 0:
+                            r.bold, r.font.color.rgb = True, RGBColor(255, 255, 255)
+        doc.add_paragraph().paragraph_format.space_after = Pt(1)
+
+    for i, section in enumerate(PAGES):
+        if i:
+            doc.add_page_break()
+        doc.add_paragraph(section["title"], "Title" if i == 0 else "Heading 1")
+        for kind, value in section["blocks"]:
+            if kind == "p":
+                doc.add_paragraph(value)
+            elif kind == "h":
+                doc.add_paragraph(value, "Heading 2")
+            elif kind == "steps":
+                for j, item in enumerate(value, 1):
+                    para = doc.add_paragraph(f"{j}.  {item}")
+                    para.paragraph_format.left_indent, para.paragraph_format.first_line_indent = Inches(.2), Inches(-.2)
+            elif kind == "table":
+                add_table(value)
+            elif kind == "code":
+                para = doc.add_paragraph()
+                r = para.add_run(value)
+                r.font.name, r.font.size = "Courier New", Pt(8.5)
+            elif kind == "figure":
+                para = doc.add_paragraph()
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                shape = para.add_run().add_picture(str(ASSETS / value["file"]), width=Inches(value["width"]))
+                shape._inline.docPr.set("descr", value["caption"])
+                para.paragraph_format.keep_with_next = True
+                cap = doc.add_paragraph(value["caption"])
+                cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for r in cap.runs:
+                    r.font.size, r.font.color.rgb = Pt(9), RGBColor.from_string("536679")
+    for element in list(doc.styles.element.iter(qn("w:pBdr"))) + list(doc.element.iter(qn("w:pBdr"))):
+        element.getparent().remove(element)
+    doc.save(path)
+
+
+# --------------------------------------------------------------------------- PDF (HTML printed by Chrome)
+
+CSS = f"""
+@page {{ size: Letter; margin: .62in .85in .7in; @bottom-right {{ content: "CrewCheck  |  v{VERSION}  |  " counter(page); font: 8pt Arial, sans-serif; color: #536679; }} }}
+body {{ font: 10.5pt/1.42 Arial, Helvetica, sans-serif; color: #111; margin: 0; }}
+section + section {{ break-before: page; }}
+h1 {{ font-size: 21pt; margin: 0 0 12pt; font-weight: 700; }}
+h1.title {{ font-size: 28pt; }}
+h2 {{ font-size: 12pt; color: #193b50; margin: 14pt 0 6pt; break-after: avoid; }}
+p {{ margin: 0 0 7pt; }}
+ol {{ margin: 0 0 8pt; padding-left: 18pt; }} li {{ margin-bottom: 4pt; }}
+table {{ width: 100%; border-collapse: collapse; margin: 4pt 0 10pt; font-size: 9.5pt; break-inside: auto; }}
+th {{ background: #193b50; color: #fff; text-align: left; }}
+th, td {{ border: .6pt solid #d9d9d9; padding: 4pt 5pt; vertical-align: middle; }}
+tr {{ break-inside: avoid; }} tbody tr:nth-child(odd) td {{ background: #f0f4f6; }}
+pre {{ font: 8.5pt/1.4 "Courier New", monospace; background: #f5f7f9; border: .6pt solid #e1e6ea; padding: 7pt 8pt; white-space: pre-wrap; margin: 0 0 9pt; }}
+figure {{ margin: 6pt 0 10pt; text-align: center; break-inside: avoid; }}
+figure img {{ max-width: 100%; border: .6pt solid #e1e6ea; }}
+figcaption {{ font-size: 9pt; color: #536679; margin-top: 4pt; }}
+"""
+
+
+def build_html():
+    parts = []
+    for i, section in enumerate(PAGES):
+        body = [f'<h1 class="{"title" if i == 0 else ""}">{html.escape(section["title"])}</h1>']
+        for kind, value in section["blocks"]:
+            if kind == "p":
+                body.append(f"<p>{html.escape(value)}</p>")
+            elif kind == "h":
+                body.append(f"<h2>{html.escape(value)}</h2>")
+            elif kind == "steps":
+                body.append("<ol>" + "".join(f"<li>{html.escape(v)}</li>" for v in value) + "</ol>")
+            elif kind == "code":
+                body.append(f"<pre>{html.escape(value)}</pre>")
+            elif kind == "table":
+                total = sum(value["widths"])
+                cols = "".join(f'<col style="width:{w / total * 100:.1f}%">' for w in value["widths"])
+                head = "".join(f"<th>{html.escape(v)}</th>" for v in value["headers"])
+                rows = "".join("<tr>" + "".join(f"<td>{html.escape(str(c))}</td>" for c in r) + "</tr>" for r in value["rows"])
+                body.append(f"<table><colgroup>{cols}</colgroup><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table>")
+            elif kind == "figure":
+                src = (ASSETS / value["file"]).as_uri()
+                body.append(f'<figure><img src="{src}" style="width:{value["width"]}in" alt="{html.escape(value["caption"])}">'
+                            f"<figcaption>{html.escape(value['caption'])}</figcaption></figure>")
+        parts.append("<section>" + "".join(body) + "</section>")
+    return f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>CrewCheck project handbook</title><style>{CSS}</style></head><body>{"".join(parts)}</body></html>'
+
+
+def find_chrome():
+    candidates = [os.getenv("CHROME"), "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                  shutil.which("google-chrome"), shutil.which("chromium"), shutil.which("chromium-browser")]
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return candidate
+    raise SystemExit("Chrome or Chromium is required for the PDF; set CHROME to its path.")
+
+
+def build_pdf(path):
+    with tempfile.TemporaryDirectory() as tmp:
+        source = Path(tmp) / "handbook.html"
+        source.write_text(build_html(), encoding="utf-8")
+        subprocess.run([find_chrome(), "--headless=new", "--disable-gpu", "--no-pdf-header-footer", "--allow-file-access-from-files",
+                        f"--print-to-pdf={path}", source.as_uri()], check=True, capture_output=True)
+
+
+if __name__ == "__main__":
+    missing = [v["file"] for s in PAGES for kind, v in s["blocks"] if kind == "figure" and not (ASSETS / v["file"]).exists()]
+    if missing:
+        raise SystemExit(f"Missing images in {ASSETS}: {', '.join(missing)}. Run npm run handbook:assets first.")
+    build_docx(OUT / f"{NAME}.docx")
+    build_pdf(OUT / f"{NAME}.pdf")
+    print(f"Built {NAME}.docx and {NAME}.pdf ({len(PAGES)} sections) in {OUT}")

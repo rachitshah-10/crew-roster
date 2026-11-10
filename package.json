@@ -1,6 +1,12 @@
 {
-  "name": "crewcheck-diagrams",
+  "name": "crewcheck-docs-tooling",
   "private": true,
-  "scripts": { "diagrams:user-flow": "node scripts/render_user_flow.mjs" },
-  "devDependencies": { "@mermaid-js/mermaid-cli": "11.12.0" }
+  "scripts": {
+    "diagrams:user-flow": "node scripts/render_user_flow.mjs",
+    "handbook:assets": "node scripts/capture_handbook_assets.mjs"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "11.12.0",
+    "playwright": "1.65.0"
+  }
 }
