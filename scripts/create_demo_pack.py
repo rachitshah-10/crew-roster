@@ -1,5 +1,5 @@
-"""Build fictional review scenarios and a parity fixture for the hosted checker."""
-import csv,json,copy
+"""Build fictional review scenarios and their sample README."""
+import csv,copy
 from datetime import datetime,timedelta,timezone
 from pathlib import Path
 from openpyxl import Workbook
@@ -37,6 +37,4 @@ for name in ['sample_roster','clean_roster','review_roster']:
  result=check_roster(rows,DEFAULT_RULES)
  fixtures.append({'name':name,'rows':rows,'expected':result,'csv':(out/(name+'.csv')).read_bytes().decode('utf-8')})
  print(name,result['summary'])
-(root/'hosted/lib').mkdir(exist_ok=True)
-(root/'hosted/lib/demo-fixtures.json').write_text(json.dumps(fixtures,indent=2))
 (out/'README.md').write_text('''# Fictional demo rosters\n\nAll names, IDs and duties are synthetic. These files contain no airline or employee records. Times are explicit UTC values and certification dates are illustrative.\n\n| File | Scenario | Expected with initial 12 h / 10 h / duty-end policy |\n|---|---|---|\n'''+''.join(f"| `{f['name']}.csv` / `.xlsx` | {'Quick walkthrough' if f['name']=='sample_roster' else 'No configured flags' if f['name']=='clean_roster' else 'Mixed review cases'} | {f['expected']['summary']['duties']} duties, {f['expected']['summary']['crew']} crew, {f['expected']['summary']['findings']} findings |\n" for f in fixtures)+'''| `input_errors.csv` / `.xlsx` | Source time-zone confirmation and invalid duration | Select UTC when prompted; invalid duration prevents checking |\n\nThe first duty for each crew member still lacks preceding-rest context, even in the clean example. No flags does not certify regulatory compliance.\n''')
