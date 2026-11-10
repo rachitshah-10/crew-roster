@@ -102,6 +102,23 @@ def test_stale_rule_version_is_a_conflict(repo):
         repo.add_rule_version(7, "manager", "from the future", RULES, now())
 
 
+def test_version_number_taken_during_save_is_a_conflict(repo):
+    """Simulates a writer that claims the next version number between our check and
+    our insert, so the primary-key safety net is exercised on every database."""
+    claimed = []
+
+    @event.listens_for(repo.engine, "before_cursor_execute")
+    def claim_first(conn, cursor, statement, *args):
+        if statement.startswith("INSERT INTO rule_versions") and not claimed:
+            claimed.append(True)
+            conn.execute(insert(rule_versions).values(id=2, created_at=now(), created_by="manager", reason="won", rules_json="{}"))
+    with pytest.raises(Conflict):
+        repo.add_rule_version(1, "manager", "lost", RULES, now())
+    assert claimed
+    event.remove(repo.engine, "before_cursor_execute", claim_first)
+    assert [v["reason"] for v in repo.rule_versions()] == ["Initial illustrative rules. Not an FAA/EASA compliance profile."]  # rolled back
+
+
 @pytest.mark.skipif(not ON_POSTGRES, reason='SQLite serializes writers with BEGIN IMMEDIATE, so this interleaving cannot occur')
 def test_postgres_race_on_version_number_is_a_conflict(repo):
     other = engine_for(repo.url)
