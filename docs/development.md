@@ -1,6 +1,6 @@
 # Development and operations
 
-Unless a heading explicitly says hosted, this page describes the local FastAPI reference. Use sections 13–17 of the [project handbook](handbook/crewcheck-project-handbook.pdf) for separate local and hosted setup, current verification, operating limits and PostgreSQL rollout planning.
+This page describes the FastAPI application; headings that say hosted refer to the retired web demo. Use sections 13–17 of the [project handbook](handbook/crewcheck-project-handbook.pdf) for local and Docker setup, database choice, verification, operations and the internal deployment plan.
 
 ## Environment
 

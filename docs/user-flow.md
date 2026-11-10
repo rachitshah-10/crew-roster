@@ -1,6 +1,6 @@
 # User workflow sequence
 
-This page and its sequence diagram describe the **local account-based reference**. The public web demo starts a Scheduler directly at upload after role selection; its Manager sees shared team records from any browser or computer. Demo ownership is by the shared scheduler/manager role, not employee identity. The current meeting walkthrough is in sections 4–8 of the [project handbook](handbook/crewcheck-project-handbook.pdf).
+This page and its sequence diagram describe the account-based FastAPI application. The current walkthrough, including the timeline, import log and rule builder, is in sections 4–8 of the [project handbook](handbook/crewcheck-project-handbook.pdf).
 
 ![User workflow sequence](diagrams/user-flow.svg)
 
